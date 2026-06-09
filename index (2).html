@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>heart // terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   THEME — haunted CRT terminal with a soft, loving center
+   ============================================================ */
+:root{
+  --bg:#07090a;
+  --green:#5ef38c;      /* phosphor — the friendly voice */
+  --green-dim:#3a9d5d;
+  --amber:#ffb454;      /* the "horror" — warnings, the lurking thing */
+  --pink:#ff9bb5;       /* love — the reveal */
+  --pink-dim:#c97b92;
+  --mono:'JetBrains Mono', ui-monospace, monospace;
+  --crt:'VT323', var(--mono);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:radial-gradient(ellipse at center, #0c1010 0%, #050606 70%, #020303 100%);
+  color:var(--green);
+  font-family:var(--mono);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px; min-height:100%;
+  -webkit-font-smoothing:antialiased;
+}
+/* the monitor */
+.monitor{
+  position:relative; width:100%; max-width:880px; height:min(78vh,640px);
+  background:var(--bg);
+  border-radius:14px;
+  border:1px solid #15201a;
+  box-shadow:0 0 0 6px #0a0d0c, 0 0 60px rgba(94,243,140,.05), inset 0 0 120px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+.scanlines{position:absolute; inset:0; pointer-events:none; z-index:30;
+  background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.16) 3px);}
+.vignette{position:absolute; inset:0; pointer-events:none; z-index:29;
+  box-shadow:inset 0 0 140px rgba(0,0,0,.75);}
+.flicker{animation:flick 7s infinite}
+@keyframes flick{0%,100%{opacity:1}96%{opacity:1}96.5%{opacity:.78}97%{opacity:1}}
+
+/* terminal screen */
+.screen{position:absolute; inset:0; padding:22px 22px 16px; overflow-y:auto; z-index:10;
+  font-size:15px; line-height:1.5;}
+.screen::-webkit-scrollbar{width:8px}
+.screen::-webkit-scrollbar-thumb{background:#15281d; border-radius:8px}
+.ln{margin:1px 0; white-space:pre-wrap; word-break:break-word}
+.g{color:var(--green)} .gd{color:var(--green-dim)} .am{color:var(--amber)} .pk{color:var(--pink)} .pkd{color:var(--pink-dim)}
+.cmd-echo{color:var(--green)}
+.cmd-echo .pr{color:var(--green-dim)}
+a{color:var(--pink); text-decoration:underline; text-underline-offset:2px}
+
+/* input row */
+.inrow{display:flex; align-items:baseline; gap:8px; margin-top:6px; z-index:10; position:relative}
+.prompt{color:var(--green-dim); white-space:nowrap}
+#cmd{flex:1; background:transparent; border:none; outline:none; color:var(--green);
+  font-family:var(--mono); font-size:15px; caret-color:var(--pink)}
+.blink{animation:blink 1.1s steps(1) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+/* ============================================================
+   THE HALLWAY — the fps minigame overlay
+   ============================================================ */
+#hallway{position:absolute; inset:0; z-index:20; display:none; background:#040605}
+#hallway canvas{display:block; width:100%; height:100%; cursor:none; touch-action:none}
+.overlay{position:absolute; inset:0; display:none; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; gap:14px;
+  background:rgba(4,6,5,.82); z-index:21; padding:24px}
+.overlay h2{font-family:var(--crt); font-size:46px; margin:0; letter-spacing:1px; color:var(--pink)}
+.overlay p{margin:0; max-width:30ch; color:var(--green); font-size:15px; line-height:1.5}
+.overlay .small{color:var(--green-dim); font-size:13px}
+.key{display:inline-block; padding:2px 8px; border:1px solid var(--green-dim); border-radius:5px; color:var(--green); font-size:13px}
+/* a spot reserved for the future "animated you" / kiss */
+#you-slot{min-height:4px}
+.kiss{display:flex; justify-content:center; margin:6px 0 2px}
+.kiss-frame{position:relative; width:196px; height:196px; border-radius:12px; overflow:hidden; border:1px solid #2a2230; box-shadow:0 0 26px rgba(255,155,181,.18)}
+.kiss-sprite{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; animation:kisspulse 3.4s ease-in-out infinite}
+@keyframes kisspulse{0%,100%{transform:scale(1.02)}50%{transform:scale(1.05)}}
+.kiss-heart{position:absolute; left:49%; top:58%; width:18px; height:15px; transform:translate(-50%,0) scale(.4); opacity:0; animation:kissheart 3.4s ease-out infinite}
+@keyframes kissheart{0%,46%{opacity:0; transform:translate(-50%,0) scale(.4)}52%{opacity:1; transform:translate(-50%,-3px) scale(1)}82%{opacity:1; transform:translate(20%,-78px) scale(1.15)}92%,100%{opacity:0; transform:translate(35%,-104px) scale(1.15)}}
+.kiss-cap{font-family:var(--crt); font-size:22px; color:var(--pink); text-align:center; margin-top:6px; letter-spacing:1px}
+
+/* typing minigame */
+#typer{position:absolute; inset:0; z-index:20; display:none; flex-direction:column; background:#040605; font-family:var(--mono); padding:14px 16px}
+.t-hud{display:flex; justify-content:space-between; align-items:center; color:var(--green); font-size:14px; margin-bottom:6px}
+.t-field{position:relative; flex:1; overflow:hidden; border-top:1px solid #15281d; border-bottom:1px solid #15281d}
+.t-word{position:absolute; color:var(--amber); font-size:16px; white-space:nowrap; transform:translateX(-50%)}
+.t-word .hit{color:var(--pink)}
+.t-reward{position:absolute; color:var(--pink); font-size:13px; transform:translateX(-50%); pointer-events:none; animation:rise 1.4s ease-out forwards}
+@keyframes rise{from{opacity:1; transform:translate(-50%,0)} to{opacity:0; transform:translate(-50%,-44px)}}
+.t-inrow{display:flex; align-items:baseline; gap:8px; margin-top:8px}
+#t-input{flex:1; background:transparent; border:none; outline:none; color:var(--green); font-family:var(--mono); font-size:16px; caret-color:var(--pink)}
+.toast{position:absolute; top:14px; right:14px; z-index:45; background:#0c1411; border:1px solid var(--green-dim); color:var(--green); font-size:13px; padding:8px 12px; border-radius:8px; opacity:0; transform:translateY(-8px); transition:opacity .3s, transform .3s}
+.toast.show{opacity:1; transform:translateY(0)}
+
+@media (prefers-reduced-motion: reduce){
+  .flicker{animation:none}
+  .blink{animation:none}
+}
+@media (max-width:560px){
+  .screen{font-size:13px} .overlay h2{font-size:34px}
+}
+</style>
+</head>
+<body>
+<div class="monitor flicker">
+  <!-- terminal -->
+  <div class="screen" id="screen">
+    <div id="out"></div>
+    <div class="inrow" id="inrow" style="display:none">
+      <span class="prompt" id="ps1">guest@heart ~ %</span>
+      <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="terminal command input" />
+    </div>
+  </div>
+
+  <!-- the fps minigame -->
+  <div id="hallway">
+    <canvas id="game"></canvas>
+    <div class="overlay" id="ov-start">
+      <h2>THE HALLWAY</h2>
+      <p>shapes will come out of the dark. aim with your mouse, click to banish them. each one was never a threat — it just needed to hear from you.</p>
+      <p class="small">protect your morale <span class="pk">&lt;3</span> &nbsp;·&nbsp; <span class="key">esc</span> to leave anytime</p>
+      <p><span class="key">click</span> to begin</p>
+    </div>
+    <div class="overlay" id="ov-end">
+      <h2 id="end-title">you made it</h2>
+      <p id="end-msg"></p>
+      <div id="you-slot"><div class="kiss"><div class="kiss-frame"><img class="kiss-sprite" src="data:image/jpeg;base64,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" alt="pixel portrait blowing a kiss"><svg class="kiss-heart" viewBox="0 0 7 6" shape-rendering="crispEdges" aria-hidden="true"><g fill="#ff9bb5"><rect x="1" y="0" width="2" height="1"/><rect x="4" y="0" width="2" height="1"/><rect x="0" y="1" width="7" height="2"/><rect x="1" y="3" width="5" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="3" y="5" width="1" height="1"/></g></svg></div></div><div class="kiss-cap">muah <3</div></div>
+      <p class="small" id="end-score"></p>
+      <p><span class="key">R</span> play again &nbsp;·&nbsp; <span class="key">esc</span> back to terminal</p>
+    </div>
+  </div>
+
+  <!-- typing minigame -->
+  <div id="typer">
+    <div class="t-hud"><span id="t-morale"></span><span id="t-score"></span></div>
+    <div class="t-field" id="t-field"></div>
+    <div class="t-inrow"><span class="prompt">type &gt;</span><input id="t-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="type the words" /></div>
+    <div class="overlay" id="t-start">
+      <h2>TYPING OF THE DREAD</h2>
+      <p>words crawl out of the dark. type each one before it reaches you — and watch every fear shatter into something true.</p>
+      <p class="small"><span class="key">esc</span> to leave anytime</p>
+      <p><span class="key">enter</span> to begin</p>
+    </div>
+    <div class="overlay" id="t-end">
+      <h2 id="t-end-title"></h2>
+      <p id="t-end-msg"></p>
+      <p class="small" id="t-end-score"></p>
+      <p><span class="key">R</span> again &nbsp;·&nbsp; <span class="key">esc</span> back to terminal</p>
+    </div>
+  </div>
+
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+</div>
+
+<script>
+/* ============================================================================
+   ❤  EDIT ZONE  ❤   —  everything you'd want to change lives here.
+   Swap in your own lines. To attach your VOICE, record a clip, drop the file
+   next to this page (e.g. in a "voice" folder), and put its name in `a`.
+   Leave a:"" for lines with no recording yet — they'll just show as text.
+   ============================================================================ */
+
+const CALLSIGN = "TheBeginning";          // <- his gamertag / callsign / nickname
+const YOUR_NAME = "YourBlankCanvas";              // <- how you sign off
+const SECRET_VISITS = 3;             // visits needed before `secret` unlocks
+
+// shown by `motivate`
+const MOTIVATE = [
+  { t: "you don't have to win today. you just have to stay in it.", a:"" },
+  { t: "on the days you can't believe in yourself, borrow my belief in you. i have more than enough.", a:"" },
+  { t: "i know it's heavy right now. put some of it down. i'll help you carry the rest.", a:"" },
+  { t: "whatever you're scared you're not — smart enough, ready enough, enough — you are. i've seen it firsthand.", a:"" },
+  { t: "i'm so proud of you. not for anything you did today. just for being you, still here, still trying.", a:"" },
+  { t: "you don't have to be okay to be loved. you're already both.", a:"" },
+  { t: "the way you love people, is the bravest thing i know. that same heart will get you through this.", a:"" },
+  { t: "take the next small step. i'll be right behind you, cheering like it's the finish line.", a:"" },
+  { t: "you've carried harder than this before. and look — still standing, still protecting, still a pillar of strength.", a:"" },
+  { t: "breathe. you are doing so much better than the voice in your head is telling you.", a:"" },
+  { t: "you are my favorite person to root for. always have been, always will be.", a:"" },
+  { t: "hard things are hard. it's not a sign you're doing it wrong.", a:"" },
+  { t: "even the strongest pillars need support to protect the many <3", a:"" },
+  { t: "i have watched you carry the world on your shoulders and call it a tuesday.", a:"" },
+];
+
+// shown by `reassure`
+const REASSURE = [
+  { t: "you don't have to have it figured out. you just have to not be alone in it — and you're not. i'm right here.", a:"" },
+  { t: "whatever you decide, i'm on your team. that part isn't up for debate, ever.", a:"" },
+  { t: "nothing you could tell me would make me cherish you less.", a:"" },
+  { t: "you are not too much, and you are not falling behind. you're just tired, and that's allowed.", a:"" },
+  { t: "i'm not going anywhere. take the breath. i've got you, even when you can't hold yourself.", a:"" },
+  { t: "you are loved on the days you produce nothing at all. that was never the deal — you are appreciated exactly as you are.", a:"" },
+  { t: "it's okay to not know yet. you're allowed to figure it out slowly, and i'll be here for you every step of the way.", a:"" },
+  { t: "the hard part won't last forever. i know it feels permanent right now, but it isn't, and i'll be here on the other side of it.", a:"" },
+  { t: "you can put it down for tonight. the world will still be there tomorrow, and so will i.", a:"" },
+  { t: "you're not a burden for needing me. needing each other is the whole point of having someone.", a:"" },
+  { t: "i see how hard you're trying, i'm so proud of you.", a:"" },
+];
+
+// the "downed teammate revive" — gentle reset
+const REVIVE = [
+  { t: "stay with me. breathe in for 4... hold... out for 6. you're back. you're okay.", a:"" },
+  { t: "reviving... you don't have to get up fast. i'll cover you for a sec.", a:"" },
+  { t: "i've got you. you don't have to hold yourself up right now — just lean.", a:"" },
+  { t: "come back slowly. nothing out there needs you faster than you can give it.", a:"" },
+  { t: "you're safe here. relax your shoulders down, unclench your jaw. one breath at a time, i'm counting with you.", a:"" },
+  { t: "you're not down for the count. you're just resting. there's a difference.", a:"" },
+  { t: "found you. you're always on my mind, even when you go quiet. take the minute you need.", a:"" },
+  { t: "let it be still for a second. no decisions, no fixing. just breathe — imagine i'm right beside you.", a:"" },
+];
+
+// affirmations that burst out of shapes in THE HALLWAY
+const HALLWAY_LINES = [
+  { t:"you're so smart it's annoying", a:"" },
+  { t:"i love your laugh", a:"" },
+  { t:"you make me feel safe", a:"" },
+  { t:"proud of you. always.", a:"" },
+  { t:"you're doing better than you think", a:"" },
+  { t:"my favorite person", a:"" },
+  { t:"you've got this", a:"" },
+  { t:"still obsessed with you", a:"" },
+  { t:"that brain of yours, wow", a:"" },
+  { t:"you're enough. full stop.", a:"" },
+  { t:"keep going, i'm watching", a:"" },
+  { t:"most brilliant in the lobby", a:"" },
+  { t:"breathe. i've got you", a:"" },
+  { t:"made for the hard levels", a:"" },
+  { t:"headshot. (it's my heart)", a:"" },
+  { t:"no one does it like you", a:"" },
+];
+
+// shown by `loadout` — the real weapon: specific reasons you love him
+const LOADOUT = [
+  { name:"primary",   item:"the way you explain things you're excited about" },
+  { name:"secondary", item:"how easy it is to connect with you, laugh with you, open my mind to you" },
+  { name:"tactical",  item:"that you remember the small stuff i mention once" },
+  { name:"lethal",    item:"your terrifying love for all things horror" },
+  { name:"perk",      item:"you make any amount of stress disappear just with your presence" },
+];
+
+// unlocked by `secret` after a few visits
+const SECRET_MESSAGE = [
+  { t:"you found it. of course you did — you always look in the places no one else does.", cls:"pk" },
+  { t:"i made this whole thing because i couldn't fit how much i appreciate you into a text.", cls:"g" },
+  { t:"so here it is, hidden in a fake haunted computer, where only you would dig.", cls:"g" },
+  { t:"you're going to be okay. and i'll be right here while you find out. — " , cls:"pk", signed:true },
+];
+
+// the line revealed when you SURVIVE the hallway
+const ENDING_REVEAL = "you reached the end. it was never the dark chasing you — it was me, trying to catch up and hold your hand.";
+
+// ── TYPING minigame (`type`) — dread-words that drift in; he types them to shatter them.
+// these are the WORDS he types. each one bursts into a random HALLWAY_LINES reason.
+const DREAD_WORDS = ["doubt","behind","not enough","impostor","too slow","failure","alone","stuck","what if","not ready","too much","give up"];
+
+// ── DEFUSE minigame (`defuse`) — cut the worry-wires to calm the spiral.
+// each wire is a worry; cutting it reveals one of your REASSURE lines.
+const WORRIES = ["i'm falling behind","i'm letting people down","i'll never figure this out","i'm not good enough"];
+const DEFUSE_NOTE = "...disarmed. see? the spiral always loses. you're okay. — ";
+
+// ── EXPLORE minigame (`explore`) — a tiny haunted house where every dark corner is really me.
+// each room: desc (what he sees), exits (direction -> room), find (the sweet reveal, optional).
+const ROOMS = {
+  hall:    { desc:"a dark entry hall. doors lead north and east. something hums softly, almost like a song you know.", exits:{north:"kitchen", east:"study"} },
+  kitchen: { desc:"the kitchen. cold everywhere except one warm mug, already poured, waiting for you.", exits:{south:"hall"}, find:"i'd always make your coffee the way you like it. even in a haunted house. especially there." },
+  study:   { desc:"a study full of your books. a lamp clicks on by itself, like it was expecting you.", exits:{west:"hall", north:"bedroom"}, find:"i love the way you light up talking about the things you read. could listen forever." },
+  bedroom: { desc:"the safest room in the house. the door clicks locked behind you, gently, on purpose.", exits:{south:"study"}, find:"this is where the haunting ends. it was me the whole time — not chasing you, just keeping you company. — " }
+};
+
+/* ============================================================================
+   ⚙  ENGINE  —  you usually won't need to touch anything below here.
+   ============================================================================ */
+
+const out = document.getElementById('out');
+const screen = document.getElementById('screen');
+const inrow = document.getElementById('inrow');
+const cmd = document.getElementById('cmd');
+
+// --- safe storage (works when hosted; silently no-ops in sandboxes) ---
+function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+let visits = parseInt(lsGet('hv_visits','0'),10)+1;
+lsSet('hv_visits', String(visits));
+let best = parseInt(lsGet('hv_best','0'),10);
+
+// --- voice ---
+function playVoice(item){
+  if(item && item.a){ try{ const a=new Audio(item.a); a.volume=0.9; a.play().catch(()=>{}); }catch(e){} }
+}
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+// --- printing ---
+function print(html, cls){
+  const d=document.createElement('div');
+  d.className='ln'+(cls?(' '+cls):'');
+  d.innerHTML=html;
+  out.appendChild(d);
+  screen.scrollTop=screen.scrollHeight;
+  return d;
+}
+function spacer(){ print('&nbsp;'); }
+
+// --- boot sequence (typed) ---
+const BOOT = [
+  {t:"guest@heart ~ % ./wake_up", c:"g"},
+  {t:"> scanning the dark ..........", c:"gd"},
+  {t:"> presence detected in sector 7", c:"am", slow:true},
+  {t:"> it knows you're here", c:"am", slow:true},
+  {t:"> identifying entity ▓▓▓▓▓▒░░ 84%", c:"gd"},
+  {t:'> entity = "how appreciated you are"', c:"pk", slow:true},
+  {t:"> threat level: overwhelming <3 (affectionate)", c:"pk"},
+  {t:"", c:"g"},
+  {t:"> connection established with: "+YOUR_NAME, c:"gd"},
+  {t:"> this terminal is a safe room. nothing here can hurt you.", c:"g"},
+  {t:"", c:"g"},
+  {t:'type "help" and press enter.', c:"g"},
+];
+
+let booting=true;
+function typeLine(text, cls){
+  return new Promise(res=>{
+    const d=print('', cls); let i=0;
+    const speed = cls==='am'||cls==='pk' ? 26 : 9;
+    (function step(){
+      if(!booting){ d.innerHTML=text; res(); return; }   // skip
+      d.innerHTML = text.slice(0,i) + (i<text.length?'<span class="blink">▋</span>':'');
+      screen.scrollTop=screen.scrollHeight;
+      if(i++<text.length) setTimeout(step, speed); else { d.innerHTML=text; res(); }
+    })();
+  });
+}
+async function boot(){
+  if(visits>1) print('<span class="gd">> session restored · visit #'+visits+'</span>');
+  for(const l of BOOT){
+    await typeLine(l.t, l.c);
+    if(l.slow && booting) await new Promise(r=>setTimeout(r,180));
+  }
+  booting=false;
+  inrow.style.display='flex';
+  cmd.focus();
+  state='term';
+  unlock('first'); if(visits>=5) unlock('regular');
+}
+function skipBoot(){ if(booting){ booting=false; } }
+screen.addEventListener('click', ()=>{ if(booting) skipBoot(); else cmd.focus(); });
+
+// --- commands ---
+const COMMANDS = {
+  help(){
+    print('<span class="gd">available commands:</span>');
+    print('  <span class="g">motivate</span>   <span class="gd">— a push when you\'re running on empty</span>');
+    print('  <span class="g">reassure</span>   <span class="gd">— for when the doubt gets loud</span>');
+    print('  <span class="g">revive</span>     <span class="gd">— breathe. let me cover you a sec</span>');
+    print('  <span class="g">loadout</span>    <span class="gd">— what you\'re actually equipped with</span>');
+    print('  <span class="g">play</span>       <span class="gd">— <span class="am">THE HALLWAY</span> · fps, aim &amp; banish (mouse)</span>');
+    print('  <span class="g">type</span>       <span class="gd">— <span class="am">TYPING OF THE DREAD</span> · type to survive</span>');
+    print('  <span class="g">defuse</span>     <span class="gd">— calm the spiral before it peaks</span>');
+    print('  <span class="g">explore</span>    <span class="gd">— wander the haunted house</span>');
+    print('  <span class="g">panic</span>      <span class="gd">— too much right now? press here</span>');
+    print('  <span class="g">stats</span>      <span class="gd">— your scoreboard</span>');
+    print('  <span class="g">trophies</span>   <span class="gd">— what you\'ve unlocked</span>');
+    print('  <span class="g">secret</span>     <span class="gd">— '+(visits>=SECRET_VISITS?'???':'locked · come back a few times')+'</span>');
+    print('  <span class="g">clear</span>      <span class="gd">— wipe the screen</span>');
+    print('<span class="gd">(...not everything is on this list. you like finding things.)</span>');
+  },
+  motivate(){ const x=pick(MOTIVATE); print('<span class="g">'+x.t+'</span>'); playVoice(x); },
+  reassure(){ const x=pick(REASSURE); print('<span class="pk">'+x.t+'</span>'); playVoice(x); },
+  revive(){
+    const x=pick(REVIVE);
+    print('<span class="gd">◌ '+YOUR_NAME+' is reviving '+CALLSIGN+'...</span>');
+    print('<span class="pk">'+x.t+'</span>'); playVoice(x);
+  },
+  loadout(){
+    print('<span class="gd">// '+CALLSIGN+'\'s loadout — equipped:</span>');
+    LOADOUT.forEach(g=>{
+      print('  <span class="am">'+g.name.padEnd(10)+'</span><span class="g">'+g.item+'</span>');
+    });
+    print('<span class="gd">// status: dangerously beloved</span>');
+  },
+  secret(){
+    if(visits<SECRET_VISITS){
+      print('<span class="am">> access denied. ('+visits+'/'+SECRET_VISITS+' visits)</span>');
+      print('<span class="gd">> some things you have to come back for.</span>');
+      return;
+    }
+    SECRET_MESSAGE.forEach(l=>{
+      print('<span class="'+(l.cls||'g')+'">'+(l.t)+(l.signed?('<span class="pk">'+YOUR_NAME+'</span>'):'')+'</span>');
+    });
+    unlock('keeper');
+  },
+  play(){ startHallway(); },
+  type(){ startTyper(); },
+  defuse(){ defuseStart(); },
+  explore(){ exploreStart(); },
+  panic(){ panicCmd(); },
+  stats(){ statsCmd(); },
+  achievements(){ achCmd(); },
+  trophies(){ achCmd(); },
+  'sudo love'(){ print('<span class="pk">[sudo] password for '+CALLSIGN+': ········  access granted. you always had root here.</span>'); },
+  'sudo rm -rf doubt'(){ print('<span class="g">removing doubt/ ...</span>'); print('<span class="pk">done. (it grows back sometimes — that\'s fine, i\'ll help you clear it every time.)</span>'); },
+  'man heart'(){ print('<span class="gd">HEART(1)                  '+YOUR_NAME+'\'s manual</span>'); print('<span class="g">NAME    '+YOUR_NAME+'\'s heart — property of '+CALLSIGN+'</span>'); print('<span class="g">USAGE   lean on as needed. no rate limit, no downtime.</span>'); },
+  'ls feelings'(){ print('<span class="g">adoration   pride   safety   butterflies   forever/</span>'); print('<span class="gd">4 files, 1 directory (forever/ recurses infinitely)</span>'); },
+  'cat us.txt'(){ print('<span class="pk">best decision i ever made. still reading. still smiling. no EOF in sight.</span>'); },
+  'cd home'(){ print('<span class="pk">home isn\'t a directory — it\'s wherever you are. you\'re already there.</span>'); },
+  clear(){ out.innerHTML=''; },
+  kiss(){
+    const slot=document.getElementById('you-slot');
+    const wrap=document.createElement('div'); wrap.className='ln';
+    const k=slot.querySelector('.kiss'), cap=slot.querySelector('.kiss-cap');
+    if(k) wrap.appendChild(k.cloneNode(true));
+    if(cap) wrap.appendChild(cap.cloneNode(true));
+    out.appendChild(wrap); screen.scrollTop=screen.scrollHeight;
+    print('<span class="pk">one for you, '+CALLSIGN+'. — '+YOUR_NAME+'</span>');
+  },
+  whoami(){ print('<span class="pk">the best thing that ever logged in. (it\'s you, '+CALLSIGN+'.)</span>'); },
+};
+
+function run(raw){
+  const ps = document.getElementById('ps1');
+  print('<span class="cmd-echo"><span class="pr">'+(ps?ps.textContent:'guest@heart ~ %')+'</span> '+raw.replace(/</g,'&lt;')+'</span>');
+  const c = raw.trim().toLowerCase().replace(/\s+/g,' ');
+  if(activeMode){
+    if(c==='exit'||c==='quit'||c==='q'){ endMode('left. the safe room is still here.'); }
+    else { activeMode(raw,c); }
+    spacer(); return;
+  }
+  if(c==='') return;
+  if(COMMANDS[c]) COMMANDS[c]();
+  else { print('<span class="am">command not found: '+c.replace(/</g,'&lt;')+'</span>'); print('<span class="gd">try "help" — or just "motivate".</span>'); }
+  spacer();
+}
+cmd.addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ const v=cmd.value; cmd.value=''; run(v); }
+});
+
+/* ============================================================================
+   THE HALLWAY — first-person banish-the-dread shooter
+   ============================================================================ */
+const hallway=document.getElementById('hallway');
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const ovStart=document.getElementById('ov-start');
+const ovEnd=document.getElementById('ov-end');
+let W=0,H=0, DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){
+  const r=canvas.getBoundingClientRect();
+  W=r.width; H=r.height;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+let G=null; // game state
+const GOAL=18, MAX_MORALE=5;
+
+function startHallway(){
+  hallway.style.display='block';
+  resize();
+  ovEnd.style.display='none';
+  ovStart.style.display='flex';
+  state='game-ready';
+}
+function exitHallway(){
+  cancelAnimationFrame(G&&G.raf);
+  hallway.style.display='none';
+  state='term';
+  cmd.focus();
+  print('<span class="gd">> left the hallway. the safe room is still here.</span>'); spacer();
+}
+function newGame(){
+  ovStart.style.display='none'; ovEnd.style.display='none';
+  G={ ents:[], parts:[], floats:[], morale:MAX_MORALE, score:0,
+      last:0, spawn:1500, t0:performance.now(), flash:0, shake:0, raf:0, over:false };
+  state='game';
+  loop(performance.now());
+}
+function spawnEnt(){
+  G.ents.push({ z:1, lane:(Math.random()*1.4-0.7), wob:Math.random()*6.28, dead:false });
+}
+function entScreen(e){
+  const vx=W/2, vy=H*0.40;
+  const p=1-e.z;                 // 0 far → 1 near
+  const ease=p*p;
+  const size=8+ease*Math.min(W,H)*0.9;
+  const x=vx + e.lane*(W*0.55)*p + Math.sin(e.wob+performance.now()/600)*8*p;
+  const y=vy + ease*(H*0.55);
+  return {x,y,size};
+}
+function fireAt(px,py){
+  if(!G||G.over) return;
+  let hit=null, hz=2;
+  for(const e of G.ents){
+    if(e.dead) continue;
+    const s=entScreen(e); const hw=s.size*0.42, hh=s.size*0.6;
+    if(px>=s.x-hw && px<=s.x+hw && py>=s.y-hh && py<=s.y+hh && e.z<hz){ hit=e; hz=e.z; }
+  }
+  G.flash=1;
+  if(hit){
+    hit.dead=true;
+    const s=entScreen(hit);
+    G.score++;
+    const line=pick(HALLWAY_LINES); playVoice(line);
+    G.floats.push({text:line.t, x:s.x, y:s.y, life:1});
+    for(let i=0;i<10;i++) G.parts.push({x:s.x,y:s.y,vx:(Math.random()-.5)*4,vy:-Math.random()*4-1,life:1,sz:6+Math.random()*8});
+    G.shake=6;
+    if(G.score>=GOAL) endGame(true);
+  }
+}
+function loseMorale(){ G.morale--; G.shake=14; G.flash=.6; if(G.morale<=0) endGame(false); }
+
+function drawHeart(x,y,s,color,alpha){
+  ctx.save(); ctx.globalAlpha=alpha==null?1:alpha; ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(x,y+s*0.28);
+  ctx.bezierCurveTo(x,y, x-s,y, x-s,y+s*0.3);
+  ctx.bezierCurveTo(x-s,y+s*0.62, x,y+s*0.9, x,y+s*1.08);
+  ctx.bezierCurveTo(x,y+s*0.9, x+s,y+s*0.62, x+s,y+s*0.3);
+  ctx.bezierCurveTo(x+s,y, x,y, x,y+s*0.28);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function drawReticle(x,y){
+  ctx.save(); ctx.strokeStyle='#ff9bb5'; ctx.lineWidth=2; ctx.lineCap='round';
+  ctx.beginPath(); ctx.setLineDash([7,7]); ctx.arc(x,y,16,0,6.28); ctx.stroke(); ctx.setLineDash([]);
+  [[0,-22,0,-10],[0,22,0,10],[-22,0,-10,0],[22,0,10,0]].forEach(t=>{
+    ctx.beginPath(); ctx.moveTo(x+t[0],y+t[1]); ctx.lineTo(x+t[2],y+t[3]); ctx.stroke();
+  });
+  drawHeart(x,y-4,4,'#ff9bb5',1);
+  ctx.restore();
+}
+function drawCorridor(){
+  ctx.fillStyle='#040605'; ctx.fillRect(0,0,W,H);
+  const vx=W/2, vy=H*0.40;
+  ctx.strokeStyle='rgba(94,243,140,0.10)'; ctx.lineWidth=1;
+  // receding rectangles
+  for(let i=1;i<=8;i++){
+    const p=i/9, w=W*(1-p)*0.9+W*0.05*p, h=H*(1-p)*0.9+H*0.05*p;
+    const x=vx-(vx-(W*0.04))*(1-p), y=vy-(vy-(H*0.04))*(1-p);
+    ctx.strokeRect(W/2-w/2, vy-h*(vy/H), w, h*0.9);
+  }
+  // converging floor/ceiling lines
+  ctx.strokeStyle='rgba(94,243,140,0.07)';
+  [[0,0],[W,0],[0,H],[W,H]].forEach(c=>{ ctx.beginPath(); ctx.moveTo(c[0],c[1]); ctx.lineTo(vx,vy); ctx.stroke(); });
+}
+function drawEnt(e){
+  const s=entScreen(e); const w=s.size*0.7, h=s.size;
+  ctx.save();
+  ctx.fillStyle='#0c1411'; ctx.strokeStyle='rgba(255,180,84,0.25)'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.ellipse(s.x, s.y, w*0.5, h*0.55, 0, 0, 6.28);
+  ctx.fill(); ctx.stroke();
+  // glowing eyes
+  const er=Math.max(1.5,s.size*0.05);
+  ctx.fillStyle='#ffb454';
+  ctx.beginPath(); ctx.arc(s.x-w*0.16, s.y-h*0.12, er, 0,6.28); ctx.fill();
+  ctx.beginPath(); ctx.arc(s.x+w*0.16, s.y-h*0.12, er, 0,6.28); ctx.fill();
+  ctx.restore();
+}
+function drawHUD(){
+  // morale hearts
+  for(let i=0;i<MAX_MORALE;i++){
+    drawHeart(24+i*26, 22, 9, i<G.morale?'#ff9bb5':'#22332b', i<G.morale?1:.6);
+  }
+  // score
+  ctx.save(); ctx.fillStyle='#5ef38c'; ctx.font='500 15px JetBrains Mono, monospace'; ctx.textAlign='right';
+  ctx.fillText('banished '+G.score+' / '+GOAL, W-18, 28);
+  ctx.fillStyle='#3a9d5d'; ctx.font='13px JetBrains Mono, monospace';
+  ctx.fillText('best '+Math.max(best,G.score), W-18, 48);
+  ctx.restore();
+  // progress bar
+  const bw=W*0.5, bx=W/2-bw/2, by=H-22;
+  ctx.fillStyle='rgba(94,243,140,0.12)'; ctx.fillRect(bx,by,bw,5);
+  ctx.fillStyle='#5ef38c'; ctx.fillRect(bx,by,bw*Math.min(1,G.score/GOAL),5);
+}
+let mouse={x:0,y:0};
+function loop(now){
+  if(state!=='game'){ return; }
+  G.raf=requestAnimationFrame(loop);
+  const dt=now-G.t0;
+  // spawn ramp
+  if(now-G.last > G.spawn){ spawnEnt(); G.last=now; G.spawn=Math.max(620, 1500 - dt*0.012); }
+  // advance
+  const speed=0.00022 + dt*0.00000009;
+  for(const e of G.ents){ if(!e.dead){ e.z-=speed*16.6; if(e.z<=0.015){ e.dead=true; loseMorale(); } } }
+  G.ents=G.ents.filter(e=>!e.dead || false).filter(e=>e.z>0.01);
+  // shake
+  const sx=(Math.random()-.5)*G.shake, sy=(Math.random()-.5)*G.shake; G.shake*=0.85;
+  ctx.save(); ctx.translate(sx,sy);
+  drawCorridor();
+  G.ents.slice().sort((a,b)=>b.z-a.z).forEach(e=>{ if(!e.dead) drawEnt(e); });
+  // particles
+  G.parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.life-=0.02; drawHeart(p.x,p.y,p.sz*p.life,'#ff9bb5',Math.max(0,p.life)); });
+  G.parts=G.parts.filter(p=>p.life>0);
+  // floaters
+  ctx.font='500 14px JetBrains Mono, monospace'; ctx.textAlign='center';
+  G.floats.forEach(f=>{ f.y-=0.7; f.life-=0.012; ctx.fillStyle='rgba(255,155,181,'+Math.max(0,f.life)+')'; ctx.fillText(f.text,f.x,f.y); });
+  G.floats=G.floats.filter(f=>f.life>0);
+  drawHUD();
+  // flash
+  if(G.flash>0){ ctx.fillStyle='rgba(255,155,181,'+(G.flash*0.12)+')'; ctx.fillRect(-20,-20,W+40,H+40); G.flash-=0.08; }
+  drawReticle(mouse.x,mouse.y);
+  ctx.restore();
+}
+function endGame(won){
+  if(G.over) return; G.over=true; state='game-over';
+  cancelAnimationFrame(G.raf);
+  if(G.score>best){ best=G.score; lsSet('hv_best',String(best)); }
+  statAdd('hv_banished', G.score); if(won) unlock('banisher');
+  document.getElementById('end-title').textContent = won?'you made it out':'the dark got close';
+  document.getElementById('end-msg').innerHTML = won
+    ? '<span class="pk">'+ENDING_REVEAL+'</span>'
+    : 'that\'s okay. you held out as long as you could, and that counts. the safe room is still warm — come back when you\'re ready.';
+  document.getElementById('end-score').innerHTML = 'banished '+G.score+' &nbsp;·&nbsp; best '+best;
+  ovEnd.style.display='flex';
+}
+
+// input
+function relPos(clientX,clientY){ const r=canvas.getBoundingClientRect(); return {x:clientX-r.left, y:clientY-r.top}; }
+canvas.addEventListener('mousemove', e=>{ const p=relPos(e.clientX,e.clientY); mouse.x=p.x; mouse.y=p.y; });
+canvas.addEventListener('mousedown', e=>{
+  if(state==='game-ready'){ newGame(); return; }
+  const p=relPos(e.clientX,e.clientY); mouse.x=p.x; mouse.y=p.y; fireAt(p.x,p.y);
+});
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault(); const t=e.touches[0]; const p=relPos(t.clientX,t.clientY); mouse.x=p.x; mouse.y=p.y;
+  if(state==='game-ready'){ newGame(); return; }
+  fireAt(p.x,p.y);
+}, {passive:false});
+ovStart.addEventListener('click', ()=>{ if(state==='game-ready') newGame(); });
+window.addEventListener('resize', ()=>{ if(hallway.style.display==='block') resize(); });
+
+// global keys
+let state='boot';
+window.addEventListener('keydown', e=>{
+  if(state.startsWith('game')){
+    if(e.key==='Escape') exitHallway();
+    if((e.key==='r'||e.key==='R') && (state==='game-over')) newGame();
+  }
+});
+
+/* ============================================================================
+   ⚙  NEW: stats · trophies · type · defuse · explore · panic
+   ============================================================================ */
+
+// --- stats helpers ---
+function statGet(k){ return parseInt(lsGet(k,'0'),10)||0; }
+function statAdd(k,n){ const v=statGet(k)+n; lsSet(k,String(v)); return v; }
+function statMax(k,n){ const v=Math.max(statGet(k),n); lsSet(k,String(v)); return v; }
+
+// --- achievements ---
+const ACH = {
+  first:    "booted the safe room",
+  regular:  "came back 5 times",
+  banisher: "cleared the hallway",
+  typist:   "stared down the dread",
+  defuser:  "calmed the spiral",
+  explorer: "explored every room",
+  keeper:   "found the secret",
+  konami:   "↑ ↑ ↓ ↓ ← → ← → b a",
+};
+function achList(){ try{ return JSON.parse(lsGet('hv_ach','[]')); }catch(e){ return []; } }
+function unlock(key){
+  if(!ACH[key]) return;
+  const a=achList(); if(a.includes(key)) return;
+  a.push(key); lsSet('hv_ach', JSON.stringify(a));
+  toast('trophy — '+ACH[key]);
+}
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent='✓ '+msg;
+  document.querySelector('.monitor').appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),360); }, 2600);
+}
+function statsCmd(){
+  const have=achList().length, total=Object.keys(ACH).length;
+  print('<span class="gd">// scoreboard — '+CALLSIGN+'</span>');
+  print('  visits ............ <span class="g">'+visits+'</span>');
+  print('  hallway best ...... <span class="g">'+Math.max(best,statGet('hv_best'))+'</span>');
+  print('  shapes banished ... <span class="g">'+statGet('hv_banished')+'</span>');
+  print('  dread typed (best). <span class="g">'+statGet('hv_typebest')+'</span>');
+  print('  spirals calmed .... <span class="g">'+statGet('hv_defused')+'</span>');
+  print('  trophies .......... <span class="g">'+have+'/'+total+'</span>');
+  print('  appreciation ...... <span class="pk">∞</span>');
+}
+function achCmd(){
+  const have=achList();
+  print('<span class="gd">// trophies ('+have.length+'/'+Object.keys(ACH).length+')</span>');
+  Object.keys(ACH).forEach(k=>{
+    const got=have.includes(k);
+    print('  <span class="'+(got?'pk':'gd')+'">'+(got?'★':'☆')+' '+(got?ACH[k]:'— locked —')+'</span>');
+  });
+}
+
+// --- terminal "modes" (defuse, explore) route input here ---
+let activeMode=null;
+function setPrompt(p){ const e=document.getElementById('ps1'); if(e) e.textContent=p; }
+function endMode(msg){ activeMode=null; setPrompt('guest@heart ~ %'); if(msg) print('<span class="gd">'+msg+'</span>'); }
+
+// --- DEFUSE ---
+function defuseStart(){
+  const wires = WORRIES.map((w,i)=>({n:i+1, t:w, cut:false}));
+  let cutCount=0;
+  // shuffled pool so each cut reveals a different reassurance (refills if you run out)
+  let rPool=[];
+  function nextReassure(){
+    if(rPool.length===0){ rPool=REASSURE.slice().sort(()=>Math.random()-0.5); }
+    return rPool.pop();
+  }
+  print('<span class="am">⚠ a stress-spiral is arming.</span>');
+  print('<span class="gd">cut the wires to disarm it. type <span class="g">cut &lt;number&gt;</span>  (or "exit")</span>');
+  function board(){
+    wires.forEach(w=> print('  <span class="'+(w.cut?'gd':'am')+'">['+w.n+'] '+(w.cut?'— cut —':w.t)+'</span>'));
+    const bar='■'.repeat(cutCount)+'□'.repeat(wires.length-cutCount);
+    print('<span class="g">stability ['+bar+'] '+cutCount+'/'+wires.length+'</span>');
+  }
+  board(); setPrompt('defuse %');
+  activeMode=function(raw,c){
+    const m=c.match(/^(?:cut\s+)?(\d+)$/);
+    if(!m){ print('<span class="gd">type "cut &lt;number&gt;" — or "exit".</span>'); return; }
+    const w=wires.find(x=>x.n===parseInt(m[1],10));
+    if(!w){ print('<span class="am">no wire there.</span>'); return; }
+    if(w.cut){ print('<span class="gd">already cut.</span>'); return; }
+    w.cut=true; cutCount++;
+    const r=nextReassure(); print('<span class="pk">snip — '+r.t+'</span>'); playVoice(r);
+    if(cutCount>=wires.length){
+      print('<span class="pk">'+DEFUSE_NOTE+YOUR_NAME+'</span>');
+      statAdd('hv_defused',1); unlock('defuser'); endMode();
+    } else { board(); }
+  };
+}
+
+// --- EXPLORE ---
+function exploreStart(){
+  let cur='hall'; const found={};
+  const total=Object.values(ROOMS).filter(r=>r.find).length;
+  function enter(room){
+    cur=room; const r=ROOMS[room];
+    print('<span class="g">'+r.desc+'</span>');
+    if(r.find && !found[room]){
+      found[room]=true;
+      print('<span class="pk">'+(room==='bedroom'? r.find+YOUR_NAME : r.find)+'</span>');
+      if(Object.keys(found).length>=total){ unlock('explorer'); statAdd('hv_explored',1); }
+    }
+    print('<span class="gd">exits: '+Object.keys(r.exits).join(', ')+'</span>');
+  }
+  print('<span class="gd">a haunted house. move: north / south / east / west (n/s/e/w). also "look", "exit".</span>');
+  enter('hall'); setPrompt('explore %');
+  activeMode=function(raw,c){
+    if(c==='look'){ enter(cur); return; }
+    const dirs={n:'north',s:'south',e:'east',w:'west',north:'north',south:'south',east:'east',west:'west'};
+    const d=dirs[c.replace(/^go\s+/,'')];
+    if(!d){ print('<span class="gd">you can go: '+Object.keys(ROOMS[cur].exits).join(', ')+'</span>'); return; }
+    const dest=ROOMS[cur].exits[d];
+    if(!dest){ print('<span class="am">no door '+d+'. just a cold draft.</span>'); return; }
+    enter(dest);
+  };
+}
+
+// --- PANIC ---
+function panicCmd(){
+  out.innerHTML='';
+  print('<span class="gd">// breathe with me. nothing else has to happen right now.</span>'); spacer();
+  const seq=[['breathe in ...','g',300],['hold ...','pk',2900],['and out, slowly ...','g',5500],['again — in ...','g',8300],['hold ...','pk',10900],['out ...','g',13500]];
+  seq.forEach(s=> setTimeout(()=>print('<span class="'+s[1]+'">'+s[0]+'</span>'), s[2]));
+  setTimeout(()=>{ const r=pick(REASSURE); spacer(); print('<span class="pk">'+r.t+'</span>'); playVoice(r); }, 16200);
+}
+
+// --- TYPING OF THE DREAD ---
+const typer=document.getElementById('typer');
+const tField=document.getElementById('t-field');
+const tInput=document.getElementById('t-input');
+const tStart=document.getElementById('t-start');
+const tEnd=document.getElementById('t-end');
+const T_GOAL=15, T_MORALE=5;
+let TG=null;
+function startTyper(){ typer.style.display='flex'; tStart.style.display='flex'; tEnd.style.display='none'; state='typing'; }
+function tgNew(){
+  tStart.style.display='none'; tEnd.style.display='none';
+  Array.from(tField.querySelectorAll('.t-word,.t-reward')).forEach(e=>e.remove());
+  TG={words:[], morale:T_MORALE, score:0, last:0, spawn:1700, t0:performance.now(), over:false, raf:0};
+  tInput.value=''; tInput.focus(); tgHud();
+  TG.raf=requestAnimationFrame(tgLoop);
+}
+function tgSpawn(){
+  const text=pick(DREAD_WORDS).toLowerCase();
+  const el=document.createElement('div'); el.className='t-word'; el.textContent=text;
+  const x=12+Math.random()*76; el.style.left=x+'%'; el.style.top='0px';
+  tField.appendChild(el);
+  TG.words.push({el,text,x,y:0,vy:0.10+Math.random()*0.07});
+}
+function tgReward(x,y){
+  const r=pick(HALLWAY_LINES); playVoice(r);
+  const el=document.createElement('div'); el.className='t-reward'; el.textContent=r.t;
+  el.style.left=x+'%'; el.style.top=y+'px'; tField.appendChild(el);
+  setTimeout(()=>el.remove(),1400);
+}
+function tgHud(){
+  document.getElementById('t-morale').innerHTML='morale <span class="pk">'+'♥'.repeat(Math.max(0,TG?TG.morale:T_MORALE))+'</span><span class="gd">'+'·'.repeat(T_MORALE-(TG?TG.morale:T_MORALE))+'</span>';
+  document.getElementById('t-score').textContent='typed '+(TG?TG.score:0)+' / '+T_GOAL;
+}
+function tgInput(){
+  if(!TG||TG.over) return;
+  const val=tInput.value.trim().toLowerCase();
+  TG.words.forEach(w=>{
+    if(val && w.text.startsWith(val)) w.el.innerHTML='<span class="hit">'+w.text.slice(0,val.length)+'</span>'+w.text.slice(val.length);
+    else w.el.textContent=w.text;
+  });
+  const match=TG.words.find(w=> w.text===val);
+  if(match){ match.done=true; TG.score++; tgReward(match.x, parseFloat(match.el.style.top)||0); match.el.remove(); tInput.value='';
+    if(TG.score>=T_GOAL) tgEnd(true); }
+}
+function tgLoop(now){
+  if(state!=='typing'||!TG||TG.over) return;
+  TG.raf=requestAnimationFrame(tgLoop);
+  const dt=now-TG.t0;
+  if(now-TG.last>TG.spawn){ tgSpawn(); TG.last=now; TG.spawn=Math.max(750,1700-dt*0.02); }
+  const H=tField.clientHeight;
+  TG.words.forEach(w=>{ if(w.done) return; w.y += w.vy*(1+dt*0.000015)*16.6; w.el.style.top=w.y+'px';
+    if(w.y> H-24){ w.done=true; w.el.remove(); TG.morale--; if(TG.morale<=0) tgEnd(false); } });
+  TG.words=TG.words.filter(w=>!w.done);
+  tgHud();
+}
+function tgEnd(won){
+  if(!TG||TG.over) return; TG.over=true; state='typing-over'; cancelAnimationFrame(TG.raf);
+  statMax('hv_typebest', TG.score); if(won) unlock('typist');
+  document.getElementById('t-end-title').textContent = won?'the dread broke':'it got close';
+  document.getElementById('t-end-msg').innerHTML = won
+    ? '<span class="pk">every word you feared, you turned into something true. that\'s what you do every day, even when no one\'s watching.</span>'
+    : 'the words pile up sometimes. that isn\'t failing — that\'s being human. come back when you want another go.';
+  document.getElementById('t-end-score').textContent='typed '+TG.score;
+  tEnd.style.display='flex';
+}
+function exitTyper(){ if(TG) TG.over=true; cancelAnimationFrame(TG&&TG.raf); typer.style.display='none'; state='term'; cmd.focus(); print('<span class="gd">> left the dread behind. safe room\'s still here.</span>'); spacer(); }
+tInput.addEventListener('input', tgInput);
+tInput.addEventListener('keydown', e=>{ if(e.key==='Escape'){ e.preventDefault(); exitTyper(); } });
+tStart.addEventListener('click', ()=>{ if(state==='typing') tgNew(); });
+window.addEventListener('keydown', e=>{
+  if(state==='typing' && e.key==='Enter' && tStart.style.display!=='none'){ tgNew(); }
+  else if(state==='typing-over'){ if(e.key==='r'||e.key==='R') tgNew(); if(e.key==='Escape') exitTyper(); }
+});
+
+/* ---- easter eggs ---- */
+console.log('%c i knew you\'d look in here. hi. <3 ', 'color:#ff9bb5; font-size:14px;');
+console.log('%c (psst — try the konami code on the page) ', 'color:#5ef38c;');
+const KONAMI=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+let ki=0;
+window.addEventListener('keydown', e=>{
+  if(e.key===KONAMI[ki] || e.key.toLowerCase()===KONAMI[ki]){ ki++; if(ki===KONAMI.length){ ki=0; heartsRain(); unlock('konami'); } }
+  else ki=0;
+});
+function heartsRain(){
+  const c=document.createElement('canvas'); c.style.cssText='position:absolute;inset:0;z-index:40;pointer-events:none';
+  document.querySelector('.monitor').appendChild(c);
+  const x=c.getContext('2d'); const r=c.getBoundingClientRect(); c.width=r.width; c.height=r.height;
+  let hs=Array.from({length:40},()=>({x:Math.random()*c.width,y:-Math.random()*c.height,s:8+Math.random()*14,v:1+Math.random()*3}));
+  let frames=0;
+  (function rain(){
+    x.clearRect(0,0,c.width,c.height);
+    hs.forEach(h=>{ h.y+=h.v; if(h.y>c.height) h.y=-20;
+      x.save(); x.globalAlpha=.85; x.fillStyle='#ff9bb5';
+      x.beginPath(); const s=h.s; x.moveTo(h.x,h.y+s*0.28);
+      x.bezierCurveTo(h.x,h.y,h.x-s,h.y,h.x-s,h.y+s*0.3);
+      x.bezierCurveTo(h.x-s,h.y+s*0.62,h.x,h.y+s*0.9,h.x,h.y+s*1.08);
+      x.bezierCurveTo(h.x,h.y+s*0.9,h.x+s,h.y+s*0.62,h.x+s,h.y+s*0.3);
+      x.bezierCurveTo(h.x+s,h.y,h.x,h.y,h.x,h.y+s*0.28); x.fill(); x.restore();
+    });
+    if(frames++<360) requestAnimationFrame(rain); else c.remove();
+  })();
+}
+
+// go
+boot();
+</script>
+</body>
+</html>
