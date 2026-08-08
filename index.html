@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>WEAPON X // containment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=VT323&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090a;
+  --green:#5ef38c; --green-dim:#3a9d5d;
+  --amber:#ffb454; --amber-dim:#b47d38;
+  --pink:#ff9bb5; --pink-dim:#c97b92;
+  --blue:#6fb2ff; --yellow:#ffd23f;
+  --mono:'JetBrains Mono', ui-monospace, monospace;
+  --crt:'VT323', var(--mono);
+  --type:'Special Elite', var(--mono);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:radial-gradient(ellipse at center, #0c1010 0%, #050606 70%, #020303 100%);
+  color:var(--green); font-family:var(--mono);
+  display:flex; align-items:center; justify-content:center;
+  padding:20px; min-height:100%; -webkit-font-smoothing:antialiased;
+}
+.monitor{
+  position:relative; width:100%; max-width:940px; height:min(82vh,680px);
+  background:var(--bg); border-radius:14px; border:1px solid #1e1512;
+  box-shadow:0 0 0 6px #0a0d0c, 0 0 60px rgba(255,180,84,.05), inset 0 0 120px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+.scanlines{position:absolute; inset:0; pointer-events:none; z-index:30;
+  background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.16) 3px);}
+.vignette{position:absolute; inset:0; pointer-events:none; z-index:29;
+  box-shadow:inset 0 0 140px rgba(0,0,0,.75);}
+.flicker{animation:flick 7s infinite}
+@keyframes flick{0%,100%{opacity:1}96%{opacity:1}96.5%{opacity:.8}97%{opacity:1}}
+
+.screen{position:absolute; inset:0; padding:22px 22px 16px; overflow-y:auto; z-index:10; font-size:15px; line-height:1.5;}
+.screen::-webkit-scrollbar{width:8px}
+.screen::-webkit-scrollbar-thumb{background:#2a1f12; border-radius:8px}
+.ln{margin:1px 0; white-space:pre-wrap; word-break:break-word}
+.g{color:var(--green)} .gd{color:var(--green-dim)} .am{color:var(--amber)} .amd{color:var(--amber-dim)}
+.pk{color:var(--pink)} .pkd{color:var(--pink-dim)} .bl{color:var(--blue)} .yl{color:var(--yellow)}
+.cmd-echo{color:var(--green)} .cmd-echo .pr{color:var(--amber-dim)}
+a{color:var(--pink)}
+.inrow{display:flex; align-items:baseline; gap:8px; margin-top:6px; z-index:10; position:relative}
+.prompt{color:var(--amber-dim); white-space:nowrap}
+#cmd{flex:1; background:transparent; border:none; outline:none; color:var(--green); font-family:var(--mono); font-size:15px; caret-color:var(--amber)}
+.blink{animation:blink 1.1s steps(1) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+/* ================= THE GIFT — adventure overlay ================= */
+#adventure{position:absolute; inset:0; z-index:20; display:none; background:#05070a}
+#adventure canvas{display:block; width:100%; height:100%; image-rendering:pixelated; touch-action:none}
+
+/* HUD */
+#hud{position:absolute; left:0; right:0; top:0; z-index:24; padding:10px 12px; display:flex; align-items:flex-start; gap:14px; pointer-events:none; flex-wrap:wrap}
+#hp-wrap{display:flex; flex-direction:column; gap:3px}
+#hp-label{font:700 10px var(--mono); color:#ff9bb5; letter-spacing:1px}
+#hp-bar{width:150px; height:12px; background:#2a1414; border:1px solid #000; border-radius:3px; overflow:hidden}
+#hp-fill{height:100%; width:100%; background:#5ef38c; transition:width .12s linear}
+#quest{display:none; flex-direction:column; gap:4px; pointer-events:auto}
+#slots{display:flex; gap:6px}
+.slot{width:34px; height:34px; border:1px solid #3a2f22; background:rgba(10,14,16,.6); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:19px; color:#5a4a38}
+.slot.got{border-color:var(--pink); box-shadow:0 0 10px rgba(255,155,181,.35); color:#fff}
+#quest-row{display:flex; align-items:center; gap:8px}
+#hint-btn{pointer-events:auto; font:700 11px var(--mono); color:var(--amber); background:transparent; border:1px solid var(--amber-dim); border-radius:6px; padding:5px 10px; cursor:pointer; letter-spacing:1px}
+#hint-btn:hover{background:rgba(255,180,84,.12)}
+#hint-pop{max-width:280px; font:500 12px var(--mono); color:var(--pink); background:rgba(12,8,6,.85); border:1px solid var(--pink-dim); border-radius:8px; padding:8px 10px; display:none}
+#invbar{position:absolute; left:12px; bottom:10px; z-index:24; display:flex; gap:6px; pointer-events:none; flex-wrap:wrap; max-width:70%}
+.inv{min-width:30px; height:30px; padding:0 6px; border:1px solid #2a3138; background:rgba(10,14,16,.6); border-radius:6px; display:flex; align-items:center; gap:4px; font:600 12px var(--mono); color:#cfe}
+#tip{position:absolute; right:12px; bottom:10px; z-index:24; font:500 11px var(--mono); color:#6f7a70; text-align:right; pointer-events:none}
+
+.overlay{position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:14px; background:rgba(4,6,9,.9); z-index:26; padding:24px}
+.overlay h2{font-family:var(--crt); font-size:44px; margin:0; letter-spacing:2px; color:var(--yellow)}
+.overlay p{margin:0; max-width:36ch; color:var(--green); font-size:15px; line-height:1.5}
+.overlay .small{color:var(--green-dim); font-size:12px; max-width:44ch}
+.key{display:inline-block; padding:2px 7px; border:1px solid var(--amber-dim); border-radius:5px; color:var(--amber); font-size:12px; margin:1px}
+.btn{margin-top:6px; padding:9px 22px; background:transparent; border:1px solid var(--yellow); color:var(--yellow); font-family:var(--mono); font-size:15px; border-radius:8px; cursor:pointer; letter-spacing:1px}
+.btn:hover{background:rgba(255,210,63,.12)}
+
+/* the note (paper) + the letter */
+#paper{position:absolute; inset:0; z-index:28; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.86); padding:18px}
+.parchment{position:relative; max-width:640px; width:100%; max-height:88%; overflow-y:auto; background:linear-gradient(#f3e6c8,#e9d8b0); color:#3a2c17; border-radius:8px;
+  padding:34px 34px 26px; font-family:var(--type); font-size:18px; line-height:1.7; box-shadow:0 0 60px rgba(0,0,0,.7), inset 0 0 60px rgba(120,90,40,.25); border:1px solid #b79a63}
+.parchment h3{margin:0 0 14px; font-size:24px; letter-spacing:1px; text-align:center}
+.parchment p{margin:0 0 14px}
+.parchment .sign{text-align:right; font-style:italic}
+.letter .parchment{background:linear-gradient(#fbeef0,#f6dfe6); color:#5a2a3a; border-color:#d9a9ba; box-shadow:0 0 70px rgba(255,120,160,.25), inset 0 0 60px rgba(200,110,140,.18)}
+.pbtn{display:block; margin:8px auto 0; padding:8px 22px; background:#3a2c17; color:#f3e6c8; border:none; border-radius:7px; font-family:var(--mono); font-size:14px; cursor:pointer}
+.letter .pbtn{background:#5a2a3a; color:#fbeef0}
+
+/* touch */
+#pad{position:absolute; inset:0; z-index:25; display:none; pointer-events:none}
+.tb{position:absolute; border-radius:12px; border:1px solid rgba(255,180,84,.5); background:rgba(10,14,16,.5); color:var(--amber); font:600 11px var(--mono); display:flex; align-items:center; justify-content:center; pointer-events:auto; user-select:none; touch-action:none}
+.tb.rnd{border-radius:50%}
+@media (prefers-reduced-motion: reduce){ .flicker{animation:none} .blink{animation:none} }
+@media (max-width:560px){ .screen{font-size:13px} .overlay h2{font-size:32px} .parchment{font-size:16px} #pad{display:block} }
+</style>
+</head>
+<body>
+<div class="monitor flicker">
+  <div class="screen" id="screen">
+    <div id="out"></div>
+    <div class="inrow" id="inrow" style="display:none">
+      <span class="prompt" id="ps1">asset@weaponx ~ %</span>
+      <input id="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="terminal command input" />
+    </div>
+  </div>
+
+  <!-- THE GIFT -->
+  <div id="adventure">
+    <canvas id="game"></canvas>
+    <div id="hud">
+      <div id="hp-wrap"><span id="hp-label">HEALTH</span><div id="hp-bar"><div id="hp-fill"></div></div></div>
+      <div id="quest">
+        <div id="quest-row">
+          <div id="slots">
+            <div class="slot" data-i="0" title="bucket">?</div>
+            <div class="slot" data-i="1" title="key">?</div>
+            <div class="slot" data-i="2" title="snake">?</div>
+            <div class="slot" data-i="3" title="puzzle piece">?</div>
+            <div class="slot" data-i="4" title="heart">?</div>
+          </div>
+          <button id="hint-btn">HINT</button>
+        </div>
+        <div id="hint-pop"></div>
+      </div>
+    </div>
+    <div id="invbar"></div>
+    <div id="tip"></div>
+
+    <div id="pad">
+      <div class="tb rnd" id="p-left"  style="left:14px;  bottom:74px; width:56px;height:56px">◀</div>
+      <div class="tb rnd" id="p-right" style="left:78px;  bottom:74px; width:56px;height:56px">▶</div>
+      <div class="tb rnd" id="p-jump"  style="left:46px;  bottom:14px; width:56px;height:56px">JUMP</div>
+      <div class="tb" id="p-grab" style="right:150px; bottom:60px; width:52px;height:34px">GRAB</div>
+      <div class="tb" id="p-eat"  style="right:94px;  bottom:60px; width:52px;height:34px">EAT</div>
+      <div class="tb" id="p-sword" style="right:150px; bottom:18px; width:52px;height:34px">SWORD</div>
+      <div class="tb" id="p-knife" style="right:94px;  bottom:18px; width:52px;height:34px">KNIFE</div>
+      <div class="tb" id="p-dig"  style="right:20px;  bottom:38px; width:56px;height:48px">DIG</div>
+    </div>
+
+    <div class="overlay" id="ov-start">
+      <h2 id="start-h">THE GIFT</h2>
+      <p id="start-p">a little world to wander. something's hidden in it for you.</p>
+      <p class="small">
+        <span class="key">A</span><span class="key">D</span> move &nbsp; <span class="key">W</span>/<span class="key">space</span> jump &nbsp; <span class="key">L</span> grab &nbsp; <span class="key">C</span> eat<br>
+        <span class="key">J</span> sword &nbsp; <span class="key">K</span> throw knife (at cursor) &nbsp; <span class="key">click</span> dig (with pickaxe)
+      </p>
+      <p class="small">your health slowly drains — eat what you find. <span class="key">esc</span> leaves anytime.</p>
+      <button class="btn" id="start-go">STEP IN</button>
+    </div>
+    <div class="overlay" id="ov-end">
+      <h2 id="end-h">…</h2>
+      <p id="end-p"></p>
+      <button class="btn" id="end-again">WAKE UP AGAIN</button>
+      <p class="small"><span class="key">esc</span> back to terminal</p>
+    </div>
+
+    <div id="paper" class="note">
+      <div class="parchment">
+        <h3 id="paper-h">✦</h3>
+        <div id="paper-body"></div>
+        <button class="pbtn" id="paper-x">fold it up ↵</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+</div>
+
+<script>
+/* ============================================================================
+   ❤  EDIT ZONE  ❤
+   ============================================================================ */
+const CALLSIGN = "TheBeginning";
+const BDAY_NAME = "John";
+const HANDLER   = "love";   // how the letters sign off
+
+// The note he finds first (part one). Plain text; \n\n splits paragraphs.
+const NOTE_TEXT =
+`Greetings birthday boy, welcome to your gift (part one at least — you deserve the world, but you'll get that with time).
+
+There are five items hidden across this map. You must find all five in order to claim your prize. The items can be hidden behind things above ground, but they can also be below ground.
+
+Be careful though — there's lots of things that don't want you to take what's yours.
+
+Good luck, love!`;
+
+// The letter revealed when all five are collected.
+const LETTER_TEXT =
+`Good job, love! I knew you'd be able to do it. While they might seem random, all of these items I've had you collect are a part of me and symbolize what you mean to me.
+
+The wooden bucket: a part of a yoke, which has a dual meaning. The yoke symbolizes the ultimate submission to authority — your judgement is my gospel, your word is law to me, because you know what is best for me. It's also only a part of the yoke: you're the other part. As a unit, we're equally yoked; I will be here to support and balance you every day and in every phase of life, just as you are with me.
+
+Next is the key. I give this to you to show you are the sole person who has complete access to me — but even more important, you are my Keeper, my Owner.
+
+The snake is a call to the Ouroboros, a serpent that eats its own tail. It marks an eternal cycle; in our case, I'm using it to reference my eternal devotion to you.
+
+The puzzle piece is my way of saying you complete me — that I was drafted by life to become your exact complement. I was molded specifically for you, to fit you in your desires, needs, and aspirations.
+
+Last, and probably most obvious, is the red heart. You have my heart, ${BDAY_NAME}. I am yours in every way, and you've held my heart in your hands for longer than you think. Thinking that we've spent the better part of this year forming the bond we have is wild to sit with. We've created such a soul-deep, all-consuming bond — one that scared me at first with how intense and natural it felt — but I know now it's exactly where I am meant to be: by your side, with you. You've become my home, my best friend, my rock, my confidant, my light, and most importantly, my greatest excitement for whatever lies ahead.
+
+Happy birthday, love.`;
+
+// quest items in slot order: id, emoji, hint
+const QUEST = [
+  { id:'bucket', emoji:'🪣', hint:"a home keeps secrets. step inside one of the houses above ground and look in the corner." },
+  { id:'key',    emoji:'🔑', hint:"look up. the tallest tree is hiding something shiny — you'll have to climb the branches." },
+  { id:'snake',  emoji:'🐍', hint:"not everything sits in plain sight. find the little stone cairn on the surface and dig straight down beneath it." },
+  { id:'puzzle', emoji:'🧩', hint:"the caves run deep. follow one to its very end… and bring your blade — it's guarded." },
+  { id:'heart',  emoji:'❤️', hint:"keep heading east. all the way to the edge of the world. it's waiting on a pedestal." },
+];
+/* ============================================================================
+   ⚙  TERMINAL ENGINE
+   ============================================================================ */
+const out=document.getElementById('out'), screen=document.getElementById('screen');
+const inrow=document.getElementById('inrow'), cmd=document.getElementById('cmd');
+function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+let visits=parseInt(lsGet('wx_visits','0'),10)+1; lsSet('wx_visits',String(visits));
+
+function print(html,cls){ const d=document.createElement('div'); d.className='ln'+(cls?(' '+cls):''); d.innerHTML=html; out.appendChild(d); screen.scrollTop=screen.scrollHeight; return d; }
+function spacer(){ print('&nbsp;'); }
+
+const BOOT=[
+  {t:"asset@weaponx ~ % ./containment --wake", c:"g"},
+  {t:"> powering cages ..........", c:"gd"},
+  {t:"> motion in cell block. again.", c:"am", slow:true},
+  {t:'> asset identified: "'+CALLSIGN+'"', c:"yl", slow:true},
+  {t:"> claws: sharp. attitude: sharper. hips: under review.", c:"am"},
+  {t:"> ...wait. checking the calendar.", c:"gd", slow:true},
+  {t:"> oh. it's almost your birthday, isn't it, "+BDAY_NAME+".", c:"pk", slow:true},
+  {t:"> ugh. fine. i'll drop the act. someone left you something.", c:"amd"},
+  {t:"", c:"g"},
+  {t:'> type "gift" and hit enter. try not to break a hip getting there.', c:"pk"},
+  {t:'> (or "help" if you want the rest of the toys.)', c:"gd"},
+];
+let booting=true;
+function typeLine(text,cls){ return new Promise(res=>{ const d=print('',cls); let i=0; const sp=(cls==='am'||cls==='pk'||cls==='yl')?24:9;
+  (function step(){ if(!booting){ d.innerHTML=text; res(); return; } d.innerHTML=text.slice(0,i)+(i<text.length?'<span class="blink">▋</span>':''); screen.scrollTop=screen.scrollHeight; if(i++<text.length) setTimeout(step,sp); else { d.innerHTML=text; res(); } })(); }); }
+async function boot(){
+  if(visits>1) print('<span class="amd">> re-entry #'+visits+'. can\'t stay away, huh.</span>');
+  for(const l of BOOT){ await typeLine(l.t,l.c); if(l.slow&&booting) await new Promise(r=>setTimeout(r,170)); }
+  booting=false; inrow.style.display='flex'; cmd.focus(); state='term';
+}
+screen.addEventListener('click',()=>{ if(booting){ booting=false; } else cmd.focus(); });
+
+const COMMANDS={
+  help(){
+    print('<span class="amd">// fine. here\'s what you\'re allowed to touch:</span>');
+    print('  <span class="g">gift</span>       <span class="gd">— <span class="pk">the birthday thing. start here, '+BDAY_NAME+'.</span></span>');
+    print('  <span class="g">snikt</span>      <span class="gd">— pop the claws. show off.</span>');
+    print('  <span class="g">regen</span>      <span class="gd">— your "healing factor" status. the joints lost.</span>');
+    print('  <span class="g">dossier</span>    <span class="gd">— the classified file i keep on you.</span>');
+    print('  <span class="g">lifealert</span>  <span class="gd">— for emergencies. you\'re at that age.</span>');
+    print('  <span class="g">clear</span>      <span class="gd">— wipe the screen.</span>');
+    print('<span class="amd">(some things aren\'t on the list. you\'re nosy. you\'ll find them.)</span>');
+  },
+  gift(){ startGame(); },
+  birthday(){ startGame(); },
+  play(){ startGame(); },
+  dangerroom(){ startGame(); },
+  snikt(){ print('<span class="yl">*SNIKT*</span> <span class="am">'+pick(["relax, you\'ll strain something.","very scary. now take your supplements.","careful swinging those at your age.","menacing. also it\'s past your bedtime."])+'</span>'); },
+  regen(){ print('<span class="am">'+pick(["healing factor: nominal. joints: filing a complaint.","regenerating... slower than usual. it\'s called being ANCIENT.","you\'ll live. unfortunately for everyone, forever."])+'</span>'); },
+  dossier(){
+    print('<span class="amd">// CLASSIFIED — WEAPON X FILE</span>');
+    [['designation',CALLSIGN,'yl'],['age','old enough to remember dial-up','am'],['powers','horror trivia, being annoyingly right','g'],['weakness','me. also stairs, allegedly.','pk'],['handler note','do NOT tell him he\'s my favorite.','pkd']].forEach(r=>print('  <span class="gd">'+r[0].padEnd(12)+'</span><span class="'+r[2]+'">'+r[1]+'</span>'));
+  },
+  lifealert(){ print('<span class="am">📟 LIFE ALERT armed.</span>'); print('<span class="pkd">relax. i\'d catch you. every time.</span>'); },
+  whoami(){ print('<span class="pk">the most dangerous asset in this building. also my favorite. it\'s you, '+BDAY_NAME+'.</span>'); },
+  clear(){ out.innerHTML=''; },
+  'sudo shutdown'(){ print('<span class="am">request denied. you don\'t get to leave. sit.</span>'); },
+};
+function run(raw){
+  const ps=document.getElementById('ps1');
+  print('<span class="cmd-echo"><span class="pr">'+(ps?ps.textContent:'asset@weaponx ~ %')+'</span> '+raw.replace(/</g,'&lt;')+'</span>');
+  const c=raw.trim().toLowerCase().replace(/\s+/g,' ');
+  if(c==='') return;
+  if(COMMANDS[c]) COMMANDS[c](); else { print('<span class="am">command not found: '+c.replace(/</g,'&lt;')+'</span>'); print('<span class="gd">try "gift", '+BDAY_NAME+'. or "help".</span>'); }
+  spacer();
+}
+cmd.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const v=cmd.value; cmd.value=''; run(v); } });
+
+/* ============================================================================
+   THE GIFT — tile-based adventure
+   ============================================================================ */
+const adv=document.getElementById('game').parentElement; // #adventure
+const canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
+const ovStart=document.getElementById('ov-start'), ovEnd=document.getElementById('ov-end');
+const paper=document.getElementById('paper'), pad=document.getElementById('pad');
+const hpFill=document.getElementById('hp-fill'), questBox=document.getElementById('quest');
+const slotEls=[...document.querySelectorAll('.slot')], invbar=document.getElementById('invbar');
+const hintPop=document.getElementById('hint-pop'), tipEl=document.getElementById('tip');
+
+let VW=0,VH=0, DPR=Math.min(window.devicePixelRatio||1,2);
+function resize(){ const r=canvas.getBoundingClientRect(); VW=r.width; VH=r.height; canvas.width=VW*DPR; canvas.height=VH*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); ctx.imageSmoothingEnabled=false; }
+
+// tiles
+const TS=22, MAP_W=170, MAP_H=58, SURF_BASE=20;
+const AIR=0,GRASS=1,DIRT=2,STONE=3,TRUNK=4,LEAF=5,WALL=6,ROOF=7,DOOR=8,BEDROCK=9,PLANK=10;
+const SOLID=new Set([GRASS,DIRT,STONE,LEAF,WALL,ROOF,BEDROCK,PLANK]);
+const DIGGABLE=new Set([GRASS,DIRT,STONE,LEAF]);
+let tiles, surf=[];
+const idx=(tx,ty)=>ty*MAP_W+tx;
+function T(tx,ty){ if(tx<0||tx>=MAP_W||ty<0||ty>=MAP_H) return BEDROCK; return tiles[idx(tx,ty)]; }
+function setT(tx,ty,v){ if(tx>=0&&tx<MAP_W&&ty>=0&&ty<MAP_H) tiles[idx(tx,ty)]=v; }
+function solidAt(tx,ty){ return SOLID.has(T(tx,ty)); }
+
+let G=null;              // game state
+const SPAWN_TX=6;
+
+function rngWalkCave(sx,sy,steps,rad){
+  let x=sx,y=sy,dir=1;
+  for(let i=0;i<steps;i++){
+    for(let ox=-rad;ox<=rad;ox++) for(let oy=-rad;oy<=rad;oy++){
+      if(ox*ox+oy*oy<=rad*rad+1){ const tx=x+ox,ty=y+oy; if(ty>surf[Math.max(0,Math.min(MAP_W-1,tx))]+2 && T(tx,ty)!==BEDROCK) setT(tx,ty,AIR); }
+    }
+    x += dir*(Math.random()<0.7?1:0) + (Math.random()<0.5?-1:1)*(Math.random()<0.3?1:0);
+    y += (Math.random()<0.55?1:0) - (Math.random()<0.2?1:0);
+    if(Math.random()<0.08) dir*=-1;
+    x=Math.max(2,Math.min(MAP_W-3,x)); y=Math.max(SURF_BASE+3,Math.min(MAP_H-3,y));
+  }
+  return {x,y};
+}
+function carveRoom(cx,cy,w,h){ for(let ox=-w;ox<=w;ox++)for(let oy=-h;oy<=h;oy++){ const tx=cx+ox,ty=cy+oy; if(T(tx,ty)!==BEDROCK) setT(tx,ty,AIR); } }
+function placeTree(tx,h){
+  const base=surf[tx]-1;
+  for(let i=0;i<h;i++) setT(tx,base-i,TRUNK);
+  const top=base-h;
+  for(let dy=-1;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ if(Math.abs(dx)+Math.abs(dy)<=3) if(T(tx+dx,top-dy)===AIR) setT(tx+dx,top-dy,LEAF); }
+}
+function placeTallTree(tx){
+  // climbable: trunk + alternating solid leaf branch-platforms every 3 tiles
+  const base=surf[tx]-1, h=15;
+  for(let i=0;i<h;i++) setT(tx,base-i,TRUNK);
+  for(let j=2;j<h-1;j+=3){ const side=(j%2===0)?1:-1; for(let k=0;k<3;k++) setT(tx+side*(k+1),base-j,LEAF); setT(tx,base-j,LEAF); }
+  const top=base-h;
+  for(let dy=-1;dy<=1;dy++) for(let dx=-2;dx<=2;dx++) if(T(tx+dx,top-dy)===AIR) setT(tx+dx,top-dy,LEAF);
+  return {x:tx*TS, y:(top-2)*TS};   // key sits on top platform
+}
+function placeHouse(tx,w,h){
+  const gy=surf[tx];
+  for(let c=0;c<=w;c++) setT(tx+c,gy-h-1,ROOF);
+  for(let c=0;c<=w;c++) setT(tx+c,gy-h,ROOF);
+  for(let r=1;r<=h;r++){ setT(tx,gy-r,WALL); setT(tx+w,gy-r,WALL); }
+  for(let c=1;c<w;c++) for(let r=1;r<=h;r++) setT(tx+c,gy-r,AIR);
+  setT(tx+w,gy-1,DOOR); setT(tx+w,gy-2,DOOR);      // door on right wall
+  return {x:(tx+2)*TS, y:(gy-1)*TS};                // interior floor spot
+}
+
+function buildWorld(){
+  tiles=new Uint8Array(MAP_W*MAP_H);
+  surf=[];
+  for(let x=0;x<MAP_W;x++) surf[x]=SURF_BASE+Math.round(3*Math.sin(x*0.15)+2*Math.sin(x*0.06+1));
+  const flat=(a,b,v)=>{ for(let x=a;x<=b;x++) surf[x]=v; };
+  flat(2,10,SURF_BASE); flat(34,44,20); flat(66,74,19); flat(96,102,20); flat(158,167,20);
+  for(let x=0;x<MAP_W;x++){
+    for(let y=surf[x];y<MAP_H;y++){
+      let v=STONE;
+      if(y===surf[x]) v=GRASS; else if(y<surf[x]+5) v=DIRT;
+      setT(x,y,v);
+    }
+  }
+  for(let y=0;y<MAP_H;y++){ setT(0,y,BEDROCK); setT(MAP_W-1,y,BEDROCK); }
+  for(let x=0;x<MAP_W;x++) setT(x,MAP_H-1,BEDROCK);
+
+  // decorative trees
+  for(let x=20;x<MAP_W-8;x+=Math.random()<0.5?7:9){ if(Math.abs(x-38)<4||Math.abs(x-70)<4||Math.abs(x-100)<4||Math.abs(x-118)<3||x>154) continue; placeTree(x,4+Math.floor(Math.random()*4)); }
+
+  const items=[];
+  const addItem=(id,emoji,x,y,kind)=>items.push({id,emoji,kind,x,y,w:16,h:16,bob:Math.random()*6,got:false});
+
+  // tools + note near spawn
+  addItem('knife','🔪',(SPAWN_TX+3)*TS,(surf[SPAWN_TX+3]-1)*TS,'tool');
+  addItem('pickaxe','⛏️',(SPAWN_TX+7)*TS,(surf[SPAWN_TX+7]-1)*TS,'tool');
+  addItem('note','📜',(SPAWN_TX+11)*TS,(surf[SPAWN_TX+11]-1)*TS,'note');
+  addItem('sword','🗡️',20*TS,(surf[20]-1)*TS,'tool');
+
+  // houses — bucket inside house #1
+  const bspot=placeHouse(38,5,4);
+  placeHouse(100,5,4);
+  addItem('bucket','🪣',bspot.x,bspot.y,'quest');
+
+  // tall tree — key at top
+  const kspot=placeTallTree(70);
+  addItem('key','🔑',kspot.x,kspot.y,'quest');
+
+  // snake — buried pocket under a stone cairn at x=95
+  const sx=95; const sy=surf[sx]+7;
+  carveRoom(sx,sy,1,1);
+  addItem('snake','🐍',sx*TS,(sy)*TS,'quest');
+  setT(sx,surf[sx]-1,STONE); setT(sx-1,surf[sx]-1,STONE); setT(sx+1,surf[sx]-1,STONE); setT(sx,surf[sx]-2,STONE); // cairn marker
+
+  // main cave -> puzzle chamber (guarded)
+  // shaft down from x=118, then meander to a deep room
+  for(let y=surf[118];y<surf[118]+8;y++){ setT(118,y,AIR); setT(119,y,AIR); }
+  const endp=rngWalkCave(118,surf[118]+8,90,1);
+  const chamber={x:endp.x,y:endp.y};
+  carveRoom(chamber.x,chamber.y,3,2);
+  addItem('puzzle','🧩',chamber.x*TS,chamber.y*TS,'quest');
+  const guards=[[chamber.x-2,chamber.y],[chamber.x+2,chamber.y],[chamber.x,chamber.y-1]];
+
+  // a couple extra small caves for exploring + food
+  rngWalkCave(60,surf[60]+9,50,1);
+  rngWalkCave(140,surf[140]+7,45,1);
+
+  // heart — far east on a pedestal
+  const hx=MAP_W-6; setT(hx,surf[hx]-1,PLANK); setT(hx-1,surf[hx]-1,PLANK); setT(hx+1,surf[hx]-1,PLANK);
+  addItem('heart','❤️',hx*TS,(surf[hx]-2)*TS,'quest');
+
+  // hard-jump platforms leading toward the heart (floating planks)
+  for(let i=0;i<5;i++){ const px=148+i*3, py=surf[px]-4-i%2*2; setT(px,py,PLANK); setT(px+1,py,PLANK); }
+
+  // food scattered on surface + in caves
+  const foods=[];
+  for(let x=15;x<MAP_W-8;x+=Math.random()<0.5?6:8){ if(Math.random()<0.55){ foods.push(['oldfashioned','🥃',x*TS,(surf[x]-1)*TS]); } if(Math.random()<0.5){ foods.push(['pizza','🍕',(x+2)*TS,(surf[x+2]-1)*TS]); } }
+  // some food underground (in carved caves): sprinkle where air below surface
+  let placedU=0;
+  for(let tries=0;tries<400 && placedU<10;tries++){ const x=8+Math.floor(Math.random()*(MAP_W-16)); const y=surf[x]+4+Math.floor(Math.random()*20); if(T(x,y)===AIR && solidAt(x,y+1)){ foods.push([Math.random()<0.5?'oldfashioned':'pizza', Math.random()<0.5?'🥃':'🍕', x*TS, y*TS]); placedU++; } }
+  foods.forEach(f=>addItem(f[0],f[1],f[2],f[3],'food'));
+
+  return { items, guards };
+}
+
+/* ---------- game flow ---------- */
+function startGame(){ adv.style.display='block'; resize(); ovEnd.style.display='none'; ovStart.style.display='flex'; paper.style.display='none'; questBox.style.display='none'; state='g-ready'; }
+function exitGame(){ if(G) G.over=true; cancelAnimationFrame(G&&G.raf); adv.style.display='none'; pad.style.display=''; state='term'; cmd.focus(); print('<span class="amd">> stepped back out. the little world will keep. so will i.</span>'); spacer(); }
+function newGame(){
+  ovStart.style.display='none'; ovEnd.style.display='none'; paper.style.display='none';
+  foodBag.length=0;
+  const w=buildWorld();
+  const px=SPAWN_TX*TS, py=(surf[SPAWN_TX]-3)*TS;
+  G={
+    p:{x:px,y:py,w:15,h:26,vx:0,vy:0,onGround:false,facing:1,hp:100,maxHp:100,inv:0,invuln:0,swing:0,swingHit:new Set(),kcool:0,dcool:0,anim:0},
+    items:w.items, mobs:[], shots:[], parts:[], floats:[],
+    hasPick:false, hasSword:false, hasKnife:false,
+    noteRead:false, collected:{}, guardsSpawned:false, guards:w.guards,
+    spawnT:0, over:false, won:false, raf:0, camX:0, camY:0
+  };
+  updateInv(); updateHP(); updateSlots();
+  hintPop.style.display='none';
+  if('ontouchstart' in window) pad.style.display='block';
+  state='g'; G.raf=requestAnimationFrame(loop);
+}
+let mouse={x:0,y:0,down:false};
+
+/* ---------- input ---------- */
+const keys={};
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(adv.style.display!=='block') return;
+  if(k==='escape'){ if(paper.style.display==='flex'){ closePaper(); return; } exitGame(); return; }
+  if(paper.style.display==='flex'){ if(k==='enter'){ closePaper(); } return; }
+  if(state==='g-over' && k==='r'){ newGame(); return; }
+  if(state!=='g') { return; }
+  keys[k]=true;
+  if(['a','d','w',' ','arrowleft','arrowright','arrowup'].includes(k)) e.preventDefault();
+  if(k==='l') tryGrab();
+  if(k==='c') tryEat();
+  if(k==='j') swordSwing();
+  if(k==='k') throwKnife();
+});
+window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
+canvas.addEventListener('mousemove',e=>{ const r=canvas.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; });
+canvas.addEventListener('mousedown',e=>{ if(state==='g-ready'){ newGame(); return; } const r=canvas.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; mouse.down=true; tryDig(); });
+canvas.addEventListener('mouseup',()=>{ mouse.down=false; });
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+document.getElementById('start-go').addEventListener('click',newGame);
+document.getElementById('end-again').addEventListener('click',newGame);
+document.getElementById('paper-x').addEventListener('click',closePaper);
+document.getElementById('hint-btn').addEventListener('click',showHint);
+window.addEventListener('resize',()=>{ if(adv.style.display==='block') resize(); });
+
+// touch bindings
+function tHold(id,key){ const el=document.getElementById(id); if(!el)return; el.addEventListener('touchstart',e=>{e.preventDefault(); keys[key]=true;},{passive:false}); el.addEventListener('touchend',e=>{e.preventDefault(); keys[key]=false;},{passive:false}); }
+function tTap(id,fn){ const el=document.getElementById(id); if(!el)return; el.addEventListener('touchstart',e=>{e.preventDefault(); fn();},{passive:false}); }
+tHold('p-left','a'); tHold('p-right','d'); tHold('p-jump','w');
+tTap('p-grab',tryGrab); tTap('p-eat',tryEat); tTap('p-sword',swordSwing); tTap('p-knife',throwKnife);
+tTap('p-dig',()=>{ // dig the tile in front of feet
+  const p=G.p; const tx=Math.floor((p.x+p.w/2)/TS)+p.facing; const ty=Math.floor((p.y+p.h)/TS); mouse._forceTile=[tx,ty]; tryDig(); mouse._forceTile=null;
+});
+
+/* ---------- actions ---------- */
+function itemOverlapsPlayer(it){ const p=G.p; return p.x< it.x+it.w+8 && p.x+p.w> it.x-8 && p.y< it.y+it.h+8 && p.y+p.h> it.y-8; }
+function tryGrab(){
+  const p=G.p;
+  for(const it of G.items){ if(it.got) continue; if(itemOverlapsPlayer(it)){ grab(it); return; } }
+  flash("nothing to grab here");
+}
+function grab(it){
+  it.got=true;
+  if(it.kind==='note'){ openPaper('✦  a folded note  ✦', NOTE_TEXT, false); G.noteRead=true; questBox.style.display='flex'; return; }
+  if(it.id==='pickaxe'){ G.hasPick=true; flash("pickaxe! left-click nearby ground to dig"); }
+  else if(it.id==='sword'){ G.hasSword=true; flash("a sword! press J to swing"); }
+  else if(it.id==='knife'){ G.hasKnife=true; flash("throwing knives — infinite. press K (aim with mouse)"); }
+  else if(it.kind==='food'){ p_add_food(it); flash("picked up "+it.id.replace('oldfashioned','old fashioned')+" — press C to consume"); }
+  else if(it.kind==='quest'){ G.collected[it.id]=true; updateSlots(); questFloat(it); checkWin(); }
+  updateInv();
+}
+const foodBag=[]; // {kind,heal}
+function p_add_food(it){ foodBag.push({kind:it.id, heal: it.id==='oldfashioned'?22:28, emoji: it.id==='oldfashioned'?'🥃':'🍕'}); }
+function tryEat(){
+  if(!foodBag.length){ flash("nothing to eat — go find a slice or a drink"); return; }
+  const f=foodBag.shift(); G.p.hp=Math.min(G.p.maxHp,G.p.hp+f.heal); updateHP(); updateInv();
+  flash("+"+f.heal+" health "+f.emoji); popText(G.p.x, G.p.y-10, "+"+f.heal, '#5ef38c');
+}
+function swordSwing(){ const p=G.p; if(!G.hasSword){ flash("no sword yet"); return; } if(p.swing>0) return; p.swing=14; p.swingHit=new Set(); }
+function throwKnife(){ const p=G.p; if(!G.hasKnife){ flash("no knives yet"); return; } if(p.kcool>0) return; p.kcool=10;
+  const cx=p.x+p.w/2, cy=p.y+p.h/2; let dx=(mouse.x+G.camX)-cx, dy=(mouse.y+G.camY)-cy; const m=Math.hypot(dx,dy)||1; if(m<4){ dx=p.facing; dy=0; }
+  const sp=9; G.shots.push({x:cx,y:cy,vx:dx/m*sp,vy:dy/m*sp,from:'p',dmg:2,life:120,knife:true}); }
+function tryDig(){
+  const p=G.p; if(!G.hasPick){ flash("you need the pickaxe to dig"); return; }
+  let tx,ty; if(mouse._forceTile){ [tx,ty]=mouse._forceTile; } else { tx=Math.floor((mouse.x+G.camX)/TS); ty=Math.floor((mouse.y+G.camY)/TS); }
+  const pcx=p.x+p.w/2, pcy=p.y+p.h/2; const dist=Math.hypot(tx*TS+TS/2-pcx, ty*TS+TS/2-pcy);
+  if(dist>TS*4.5){ flash("too far to dig"); return; }
+  if(DIGGABLE.has(T(tx,ty))){ setT(tx,ty,AIR); for(let i=0;i<5;i++) G.parts.push({x:tx*TS+11,y:ty*TS+11,vx:(Math.random()-.5)*3,vy:-Math.random()*2,life:1,c:'#6b4a2f'}); }
+}
+
+/* ---------- mobs ---------- */
+function spawnMob(type,tx,ty){ const s={type,x:tx*TS,y:ty*TS,w:18,h:type==='flyer'?16:24,vx:0,vy:0,hp:type==='flyer'?3:4,cd:0,onGround:false,face:1}; G.mobs.push(s); return s; }
+function spawnWave(){
+  const p=G.p; const side=Math.random()<0.5?-1:1; const tx=Math.floor((p.x)/TS)+side*Math.floor(VW/TS/2+3);
+  if(tx<2||tx>MAP_W-3) return; const ty=Math.max(2,surf[Math.max(0,Math.min(MAP_W-1,tx))]-2);
+  const roll=Math.random(); const type= roll<0.45?'walker': roll<0.75?'archer':'flyer';
+  if(G.mobs.length<7) spawnMob(type,tx,ty);
+}
+
+/* ---------- physics helpers ---------- */
+function rectSolid(x,y,w,h){ const x0=Math.floor(x/TS),x1=Math.floor((x+w-1)/TS),y0=Math.floor(y/TS),y1=Math.floor((y+h-1)/TS);
+  for(let ty=y0;ty<=y1;ty++) for(let tx=x0;tx<=x1;tx++) if(solidAt(tx,ty)) return true; return false; }
+function moveEnt(e,gravity){
+  e.x+=e.vx;
+  if(rectSolid(e.x,e.y,e.w,e.h)){ if(e.vx>0) e.x=Math.floor((e.x+e.w)/TS)*TS-e.w-0.01; else if(e.vx<0) e.x=(Math.floor(e.x/TS)+1)*TS+0.01; e.vx=0; e.bump=true; } else e.bump=false;
+  if(gravity){ e.vy+=0.42; if(e.vy>10) e.vy=10; }
+  e.y+=e.vy; e.onGround=false;
+  if(rectSolid(e.x,e.y,e.w,e.h)){ if(e.vy>0){ e.y=Math.floor((e.y+e.h)/TS)*TS-e.h-0.01; e.onGround=true; } else if(e.vy<0){ e.y=(Math.floor(e.y/TS)+1)*TS+0.01; } e.vy=0; }
+}
+
+/* ---------- damage / hp / win ---------- */
+function hurt(dmg){ const p=G.p; if(p.invuln>0) return; p.hp-=dmg; p.invuln=42; updateHP(); popText(p.x,p.y-10,"-"+dmg,'#ff6a4a'); if(p.hp<=0){ p.hp=0; updateHP(); respawn(); } }
+function respawn(){ const p=G.p; popText(p.x,p.y-20,"…caught you",'#ff9bb5'); p.x=SPAWN_TX*TS; p.y=(surf[SPAWN_TX]-3)*TS; p.vx=p.vy=0; p.hp=60; p.invuln=90; updateHP(); flash("down for a second — i've got you. back on your feet."); }
+function checkWin(){ if(QUEST.every(q=>G.collected[q.id])){ setTimeout(()=>openPaper('❤  for '+BDAY_NAME+'  ❤', LETTER_TEXT, true), 500); } }
+
+/* ---------- HUD ---------- */
+function updateHP(){ const p=G.p; const pct=Math.max(0,p.hp/p.maxHp); hpFill.style.width=(pct*100)+'%'; hpFill.style.background= pct>0.5?'#5ef38c': pct>0.25?'#ffb454':'#ff6a4a'; }
+function updateSlots(){ QUEST.forEach((q,i)=>{ const el=slotEls[i]; if(G.collected[q.id]){ el.classList.add('got'); el.textContent=q.emoji; } else { el.classList.remove('got'); el.textContent='?'; } }); }
+function updateInv(){ const chips=[]; if(G.hasPick) chips.push('⛏️'); if(G.hasSword) chips.push('🗡️'); if(G.hasKnife) chips.push('🔪∞'); const food=foodBag.length; let html=chips.map(c=>'<div class="inv">'+c+'</div>').join(''); if(food) html+='<div class="inv">🍽️ '+food+'</div>'; invbar.innerHTML=html; }
+let tipT=0;
+function flash(msg){ tipEl.textContent=msg; tipT=140; }
+function popText(x,y,txt,c){ G.floats.push({x:x,y:y,t:txt,c:c||'#fff',life:1}); }
+function questFloat(it){ popText(it.x,it.y-14, "found "+it.id+"! "+(QUEST.find(q=>q.id===it.id)||{}).emoji, '#ff9bb5'); }
+function showHint(){ const next=QUEST.find(q=>!G.collected[q.id]); if(!next){ hintPop.textContent="you have them all. read the letter, "+BDAY_NAME+". 💛"; } else { hintPop.textContent="🔎 "+next.hint; } hintPop.style.display= hintPop.style.display==='block'?'none':'block'; }
+
+/* ---------- paper ---------- */
+function openPaper(title, body, isLetter){
+  document.getElementById('paper-h').textContent=title;
+  const html=body.split(/\n\n+/).map(p=>'<p>'+p.replace(/</g,'&lt;')+'</p>').join('');
+  document.getElementById('paper-body').innerHTML=html;
+  paper.classList.toggle('letter', !!isLetter);
+  document.getElementById('paper-x').textContent= isLetter? 'close ↵' : 'fold it up ↵';
+  paper.style.display='flex'; paper._isLetter=!!isLetter;
+}
+function closePaper(){ paper.style.display='none'; if(paper._isLetter){ endGame(true); } }
+
+/* ---------- loop ---------- */
+function loop(now){
+  if(state!=='g'||!G||G.over) return; G.raf=requestAnimationFrame(loop);
+  if(paper.style.display==='flex'){ render(); return; }   // pause world while reading
+  const p=G.p; p.anim++;
+  // spawn guardians when near chamber
+  if(!G.guardsSpawned){ const near=G.items.find(it=>it.id==='puzzle'); if(near){ const d=Math.hypot(p.x-near.x,p.y-near.y); if(d<TS*14){ G.guards.forEach(gp=>spawnMob(Math.random()<0.5?'walker':'archer',gp[0],gp[1])); G.guardsSpawned=true; } } }
+  // ambient spawns
+  G.spawnT++; if(G.spawnT>150){ G.spawnT=0; spawnWave(); }
+
+  // input -> player
+  const left=keys['a']||keys['arrowleft'], right=keys['d']||keys['arrowright'], jump=keys['w']||keys['arrowup']||keys[' '];
+  if(left){ p.vx=-2.9; p.facing=-1; } else if(right){ p.vx=2.9; p.facing=1; } else p.vx*=0.55;
+  if(jump && p.onGround){ p.vy=-8.4; p.onGround=false; }
+  // physics
+  p.x+=p.vx;
+  if(rectSolid(p.x,p.y,p.w,p.h)){ if(p.vx>0) p.x=Math.floor((p.x+p.w)/TS)*TS-p.w-0.01; else if(p.vx<0) p.x=(Math.floor(p.x/TS)+1)*TS+0.01; p.vx=0; }
+  p.vy+=0.42; if(p.vy>11) p.vy=11; p.y+=p.vy; p.onGround=false;
+  if(rectSolid(p.x,p.y,p.w,p.h)){ if(p.vy>0){ p.y=Math.floor((p.y+p.h)/TS)*TS-p.h-0.01; p.onGround=true; } else if(p.vy<0){ p.y=(Math.floor(p.y/TS)+1)*TS+0.01; } p.vy=0; }
+  if(p.y>MAP_H*TS+200){ respawn(); }
+
+  if(p.invuln>0) p.invuln--; if(p.swing>0) p.swing--; if(p.kcool>0) p.kcool--;
+  // hold-to-dig
+  if(mouse.down && G.hasPick && (p.anim%6===0)) tryDig();
+
+  // health decay
+  p.hp-=0.013; if(p.hp<=0){ p.hp=0; updateHP(); respawn(); } else if(p.anim%15===0) updateHP();
+
+  // sword hitbox
+  if(p.swing>0){ const reach=30; const hb={x:p.facing>0?p.x+p.w:p.x-reach,y:p.y-4,w:reach,h:p.h+8};
+    G.mobs.forEach(m=>{ if(!p.swingHit.has(m) && hb.x<m.x+m.w&&hb.x+hb.w>m.x&&hb.y<m.y+m.h&&hb.y+hb.h>m.y){ m.hp-=3; p.swingHit.add(m); m.flash=6; for(let i=0;i<5;i++)G.parts.push({x:m.x+9,y:m.y+9,vx:(Math.random()-.5)*4,vy:-Math.random()*3,life:1,c:'#ff6a4a'}); } }); }
+
+  // camera
+  G.camX+=((p.x-VW/2)-G.camX)*0.12; G.camY+=((p.y-VH/2)-G.camY)*0.12;
+  G.camX=Math.max(0,Math.min(MAP_W*TS-VW,G.camX)); G.camY=Math.max(0,Math.min(MAP_H*TS-VH,G.camY));
+
+  // mobs
+  G.mobs.forEach(m=>{
+    const dx=p.x-m.x, dy=p.y-m.y, dist=Math.hypot(dx,dy);
+    if(m.type==='flyer'){ if(dist<TS*16){ const s=1.5; m.vx=dx/dist*s; m.vy=dy/dist*s; } m.x+=m.vx; m.y+=m.vy; }
+    else {
+      if(dist<TS*13){ m.face=dx>0?1:-1; if(m.type==='walker'||Math.abs(dx)>TS*5) m.vx=m.face*1.3; else m.vx*=0.5; }
+      else m.vx*=0.6;
+      if(m.bump && m.onGround) m.vy=-6.5;   // hop ledges
+      moveEnt(m,true);
+      if(m.type==='archer'){ m.cd--; if(m.cd<=0 && dist<TS*12 && Math.abs(dy)<TS*3){ m.cd=90; const mm=Math.hypot(dx,dy)||1; G.shots.push({x:m.x+9,y:m.y+8,vx:dx/mm*5,vy:dy/mm*5,from:'m',dmg:9,life:150}); } }
+    }
+    if(m.flash>0) m.flash--;
+    // contact damage
+    if(p.x<m.x+m.w&&p.x+p.w>m.x&&p.y<m.y+m.h&&p.y+p.h>m.y) hurt(m.type==='flyer'?7:8);
+  });
+  G.mobs=G.mobs.filter(m=>{ if(m.hp<=0){ popText(m.x,m.y-8, pick(["down!","nice.","got it"]), '#ffd23f'); return false; } if(m.y>MAP_H*TS+100) return false; return true; });
+
+  // projectiles
+  G.shots.forEach(s=>{ s.x+=s.vx; s.y+=s.vy; s.life--; if(s.knife) s.vy+=0.06;
+    if(solidAt(Math.floor(s.x/TS),Math.floor(s.y/TS))) s.life=0;
+    if(s.from==='p'){ G.mobs.forEach(m=>{ if(s.life>0 && s.x>m.x&&s.x<m.x+m.w&&s.y>m.y&&s.y<m.y+m.h){ m.hp-=s.dmg; m.flash=6; s.life=0; } }); }
+    else { if(s.life>0 && s.x>p.x&&s.x<p.x+p.w&&s.y>p.y&&s.y<p.y+p.h){ hurt(s.dmg); s.life=0; } }
+  });
+  G.shots=G.shots.filter(s=>s.life>0);
+
+  // parts + floats
+  G.parts.forEach(pt=>{ pt.x+=pt.vx; pt.y+=pt.vy; pt.vy+=0.15; pt.life-=0.03; });
+  G.parts=G.parts.filter(pt=>pt.life>0);
+  G.floats.forEach(f=>{ f.y-=0.6; f.life-=0.012; });
+  G.floats=G.floats.filter(f=>f.life>0);
+  if(tipT>0){ tipT--; if(tipT===0) tipEl.textContent=''; }
+
+  render();
+}
+
+/* ---------- render ---------- */
+const TCOL={ [GRASS]:'#3d8c52',[DIRT]:'#5a3d2a',[STONE]:'#4b4f57',[LEAF]:'#2f7a44',[WALL]:'#7a5a3a',[ROOF]:'#8c3b3b',[BEDROCK]:'#23262b',[PLANK]:'#9a7a4a' };
+function bgStops(wy){ const surfPx=SURF_BASE*TS; if(wy<surfPx-4*TS) return '#0e1826'; if(wy<surfPx) return '#0c1420'; const d=Math.min(1,(wy-surfPx)/(28*TS)); const c=Math.round(18-13*d); return 'rgb('+(c+3)+','+(c+4)+','+(c+7)+')'; }
+function render(){
+  const grd=ctx.createLinearGradient(0,0,0,VH); grd.addColorStop(0,bgStops(G.camY)); grd.addColorStop(1,bgStops(G.camY+VH)); ctx.fillStyle=grd; ctx.fillRect(0,0,VW,VH);
+  const x0=Math.floor(G.camX/TS)-1, x1=x0+Math.ceil(VW/TS)+2, y0=Math.floor(G.camY/TS)-1, y1=y0+Math.ceil(VH/TS)+2;
+  for(let ty=y0;ty<=y1;ty++) for(let tx=x0;tx<=x1;tx++){
+    const t=T(tx,ty); if(t===AIR) continue;
+    const sx=Math.floor(tx*TS-G.camX), sy=Math.floor(ty*TS-G.camY);
+    if(t===TRUNK){ ctx.fillStyle='#6b4a2f'; ctx.fillRect(sx+7,sy,8,TS); continue; }
+    if(t===DOOR){ ctx.fillStyle='#4a2f1a'; ctx.fillRect(sx+3,sy,TS-6,TS); continue; }
+    ctx.fillStyle=TCOL[t]||'#555'; ctx.fillRect(sx,sy,TS,TS);
+    if(t===GRASS){ ctx.fillStyle='#4ea862'; ctx.fillRect(sx,sy,TS,4); }
+    if(t===DIRT||t===STONE){ ctx.fillStyle='rgba(0,0,0,.14)'; ctx.fillRect(sx+5,sy+6,3,3); ctx.fillRect(sx+14,sy+13,3,3); }
+    if(t===ROOF){ ctx.fillStyle='rgba(0,0,0,.15)'; ctx.fillRect(sx,sy+TS-3,TS,3); }
+    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.strokeRect(sx+.5,sy+.5,TS,TS);
+  }
+  // items
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='19px serif';
+  G.items.forEach(it=>{ if(it.got) return; const sx=it.x-G.camX+it.w/2, sy=it.y-G.camY+Math.sin((G.p.anim+it.bob*10)/22)*3;
+    if(sx<-30||sx>VW+30||sy<-30||sy>VH+30) return;
+    if(it.kind==='quest'||it.kind==='note'){ ctx.save(); ctx.shadowColor='#ffd27a'; ctx.shadowBlur=14; ctx.fillText(it.emoji, sx, sy); ctx.restore(); }
+    else ctx.fillText(it.emoji, sx, sy);
+  });
+  // mobs
+  G.mobs.forEach(m=>{ const sx=m.x-G.camX, sy=m.y-G.camY; if(sx<-40||sx>VW+40) return; ctx.save(); if(m.flash>0) ctx.globalAlpha=.5;
+    if(m.type==='walker'){ ctx.fillStyle='#b0432f'; ctx.fillRect(sx,sy,m.w,m.h); ctx.fillStyle='#ffdd55'; ctx.fillRect(sx+4,sy+6,4,4); ctx.fillRect(sx+m.w-8,sy+6,4,4); ctx.fillStyle='#7a2a1c'; ctx.fillRect(sx+3,sy+m.h-6,4,6); ctx.fillRect(sx+m.w-7,sy+m.h-6,4,6); }
+    else if(m.type==='archer'){ ctx.fillStyle='#3f8f52'; ctx.fillRect(sx,sy,m.w,m.h); ctx.fillStyle='#ffdd55'; ctx.fillRect(sx+4,sy+6,4,4); ctx.fillRect(sx+m.w-8,sy+6,4,4); ctx.strokeStyle='#caa15e'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(sx+(m.face>0?m.w+2:-2), sy+m.h/2, 7, -1, 1); ctx.stroke(); }
+    else { ctx.fillStyle='#7b4fd0'; ctx.beginPath(); ctx.ellipse(sx+m.w/2,sy+m.h/2,m.w/2,m.h/2,0,0,6.28); ctx.fill(); ctx.fillStyle='#2a1a4a'; ctx.beginPath(); ctx.moveTo(sx,sy+4); ctx.lineTo(sx-6,sy-2); ctx.lineTo(sx+2,sy+8); ctx.fill(); ctx.beginPath(); ctx.moveTo(sx+m.w,sy+4); ctx.lineTo(sx+m.w+6,sy-2); ctx.lineTo(sx+m.w-2,sy+8); ctx.fill(); ctx.fillStyle='#ff5a5a'; ctx.fillRect(sx+4,sy+5,3,3); ctx.fillRect(sx+m.w-7,sy+5,3,3); }
+    ctx.restore();
+  });
+  // projectiles
+  G.shots.forEach(s=>{ const sx=s.x-G.camX, sy=s.y-G.camY; if(s.from==='p'){ ctx.strokeStyle='#e9edf2'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-s.vx*1.4,sy-s.vy*1.4); ctx.stroke(); } else { ctx.fillStyle='#caa15e'; ctx.fillRect(sx-2,sy-1,5,2); } });
+  // player
+  drawPlayer();
+  // particles
+  G.parts.forEach(pt=>{ ctx.globalAlpha=Math.max(0,pt.life); ctx.fillStyle=pt.c; ctx.fillRect(pt.x-G.camX,pt.y-G.camY,3,3); ctx.globalAlpha=1; });
+  // floats
+  ctx.font='700 13px JetBrains Mono, monospace';
+  G.floats.forEach(f=>{ ctx.globalAlpha=Math.max(0,f.life); ctx.fillStyle=f.c; ctx.fillText(f.t, f.x-G.camX, f.y-G.camY); ctx.globalAlpha=1; });
+  // dig cursor
+  if(G.hasPick){ const tx=Math.floor((mouse.x+G.camX)/TS), ty=Math.floor((mouse.y+G.camY)/TS); if(DIGGABLE.has(T(tx,ty))){ ctx.strokeStyle='rgba(255,210,63,.7)'; ctx.lineWidth=2; ctx.strokeRect(tx*TS-G.camX+1, ty*TS-G.camY+1, TS-2, TS-2); } }
+}
+function drawPlayer(){
+  const p=G.p; const sx=Math.floor(p.x-G.camX), sy=Math.floor(p.y-G.camY);
+  if(p.invuln>0 && Math.floor(p.invuln/4)%2===0) return;
+  ctx.save(); ctx.translate(sx+p.w/2,sy+p.h/2); ctx.scale(p.facing,1); ctx.translate(-p.w/2,-p.h/2);
+  ctx.fillStyle='#ffd23f'; ctx.fillRect(2,8,11,12);                 // yellow body
+  ctx.fillStyle='#3f6fd2'; ctx.fillRect(2,18,11,8);                 // blue legs
+  ctx.fillStyle='#2f52a8'; ctx.fillRect(2,0,11,8);                  // cowl
+  ctx.beginPath(); ctx.moveTo(2,0); ctx.lineTo(0,-5); ctx.lineTo(5,0); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(13,0); ctx.lineTo(15,-5); ctx.lineTo(10,0); ctx.fill();
+  ctx.fillStyle='#e8b98f'; ctx.fillRect(4,4,7,4); ctx.fillStyle='#111'; ctx.fillRect(8,5,2,2);
+  if(G.hasSword && p.swing>0){ ctx.strokeStyle='#dfe6ee'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(12,6); ctx.lineTo(26,-2); ctx.stroke(); ctx.strokeStyle='rgba(255,210,63,.6)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(12,13,15,-0.8,0.7); ctx.stroke(); }
+  else if(G.hasSword){ ctx.strokeStyle='#bfc7cf'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(12,14); ctx.lineTo(19,7); ctx.stroke(); }
+  ctx.restore();
+}
+function endGame(won){ if(G.over) return; G.over=true; state='g-over'; cancelAnimationFrame(G.raf);
+  document.getElementById('end-h').textContent= won?'HAPPY BIRTHDAY':'…';
+  document.getElementById('end-h').style.color= won?'#ff9bb5':'#ffd23f';
+  document.getElementById('end-p').innerHTML= won? '<span class="pk">you found every piece of me. that\'s the whole gift, '+BDAY_NAME+'. now come find me in real life for the rest of it.</span>' : 'come back anytime.';
+  ovEnd.style.display='flex';
+}
+
+/* boot */
+let state='boot';
+boot();
+</script>
+</body>
+</html>
