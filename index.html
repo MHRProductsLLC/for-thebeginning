@@ -149,8 +149,8 @@ a{color:var(--pink)}
       <h2 id="start-h">THE GIFT</h2>
       <p id="start-p">a little world to wander. something's hidden in it for you.</p>
       <p class="small">
-        <span class="key">A</span><span class="key">D</span> move &nbsp; <span class="key">W</span>/<span class="key">space</span> jump &nbsp; <span class="key">L</span> grab &nbsp; <span class="key">C</span> eat<br>
-        <span class="key">J</span> sword &nbsp; <span class="key">K</span> throw knife (at cursor) &nbsp; <span class="key">click</span> dig (with pickaxe)
+        <span class="key">A</span><span class="key">D</span> move &nbsp; <span class="key">W</span>/<span class="key">space</span> jump &nbsp; <span class="key">↓</span> dig down &nbsp; <span class="key">↵</span> grab &nbsp; <span class="key">C</span> eat<br>
+        <span class="key">J</span> sword &nbsp; <span class="key">Q</span> throw knife (at cursor) &nbsp; <span class="key">click</span> dig (with pickaxe)
       </p>
       <p class="small">your health slowly drains — eat what you find. <span class="key">esc</span> leaves anytime.</p>
       <button class="btn" id="start-go">STEP IN</button>
@@ -237,7 +237,7 @@ const BOOT=[
   {t:'> asset identified: "'+CALLSIGN+'"', c:"yl", slow:true},
   {t:"> claws: sharp. attitude: sharper. hips: under review.", c:"am"},
   {t:"> ...wait. checking the calendar.", c:"gd", slow:true},
-  {t:"> oh. it's almost your birthday, isn't it, "+BDAY_NAME+".", c:"pk", slow:true},
+  {t:"> oh. it's almost your birthday, isn't it, Daddy.", c:"pk", slow:true},
   {t:"> ugh. fine. i'll drop the act. someone left you something.", c:"amd"},
   {t:"", c:"g"},
   {t:'> type "gift" and hit enter. try not to break a hip getting there.', c:"pk"},
@@ -447,6 +447,7 @@ function newGame(){
   };
   updateInv(); updateHP(); updateSlots();
   hintPop.style.display='none';
+  try{ cmd.blur(); if(document.activeElement&&document.activeElement.blur) document.activeElement.blur(); }catch(e){}
   if('ontouchstart' in window) pad.style.display='block';
   state='g'; G.raf=requestAnimationFrame(loop);
 }
@@ -462,11 +463,11 @@ window.addEventListener('keydown',e=>{
   if(state==='g-over' && k==='r'){ newGame(); return; }
   if(state!=='g') { return; }
   keys[k]=true;
-  if(['a','d','w',' ','arrowleft','arrowright','arrowup'].includes(k)) e.preventDefault();
-  if(k==='l') tryGrab();
+  if(['a','d','w',' ','arrowleft','arrowright','arrowup','arrowdown','enter'].includes(k)) e.preventDefault();
+  if(k==='enter') tryGrab();
   if(k==='c') tryEat();
   if(k==='j') swordSwing();
-  if(k==='k') throwKnife();
+  if(k==='q') throwKnife();
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
 canvas.addEventListener('mousemove',e=>{ const r=canvas.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; });
@@ -499,9 +500,9 @@ function tryGrab(){
 function grab(it){
   it.got=true;
   if(it.kind==='note'){ openPaper('✦  a folded note  ✦', NOTE_TEXT, false); G.noteRead=true; questBox.style.display='flex'; return; }
-  if(it.id==='pickaxe'){ G.hasPick=true; flash("pickaxe! left-click nearby ground to dig"); }
+  if(it.id==='pickaxe'){ G.hasPick=true; flash("pickaxe! press ↓ to dig down, or click nearby ground"); }
   else if(it.id==='sword'){ G.hasSword=true; flash("a sword! press J to swing"); }
-  else if(it.id==='knife'){ G.hasKnife=true; flash("throwing knives — infinite. press K (aim with mouse)"); }
+  else if(it.id==='knife'){ G.hasKnife=true; flash("throwing knives — infinite. press Q (aim with mouse)"); }
   else if(it.kind==='food'){ p_add_food(it); flash("picked up "+it.id.replace('oldfashioned','old fashioned')+" — press C to consume"); }
   else if(it.kind==='quest'){ G.collected[it.id]=true; updateSlots(); questFloat(it); checkWin(); }
   updateInv();
@@ -524,6 +525,11 @@ function tryDig(){
   if(dist>TS*4.5){ flash("too far to dig"); return; }
   if(DIGGABLE.has(T(tx,ty))){ setT(tx,ty,AIR); for(let i=0;i<5;i++) G.parts.push({x:tx*TS+11,y:ty*TS+11,vx:(Math.random()-.5)*3,vy:-Math.random()*2,life:1,c:'#6b4a2f'}); }
 }
+function digDown(){
+  const p=G.p; if(!G.hasPick){ flash("you need the pickaxe to dig"); return; }
+  const tx=Math.floor((p.x+p.w/2)/TS), ty=Math.floor((p.y+p.h+2)/TS);   // tile just under the feet
+  if(DIGGABLE.has(T(tx,ty))){ setT(tx,ty,AIR); for(let i=0;i<5;i++) G.parts.push({x:tx*TS+11,y:ty*TS+11,vx:(Math.random()-.5)*3,vy:-Math.random()*2,life:1,c:'#6b4a2f'}); }
+}
 
 /* ---------- mobs ---------- */
 function spawnMob(type,tx,ty){ const s={type,x:tx*TS,y:ty*TS,w:18,h:type==='flyer'?16:24,vx:0,vy:0,hp:type==='flyer'?3:4,cd:0,onGround:false,face:1}; G.mobs.push(s); return s; }
@@ -531,7 +537,7 @@ function spawnWave(){
   const p=G.p; const side=Math.random()<0.5?-1:1; const tx=Math.floor((p.x)/TS)+side*Math.floor(VW/TS/2+3);
   if(tx<2||tx>MAP_W-3) return; const ty=Math.max(2,surf[Math.max(0,Math.min(MAP_W-1,tx))]-2);
   const roll=Math.random(); const type= roll<0.45?'walker': roll<0.75?'archer':'flyer';
-  if(G.mobs.length<7) spawnMob(type,tx,ty);
+  if(G.mobs.length<4) spawnMob(type,tx,ty);
 }
 
 /* ---------- physics helpers ---------- */
@@ -548,7 +554,7 @@ function moveEnt(e,gravity){
 /* ---------- damage / hp / win ---------- */
 function hurt(dmg){ const p=G.p; if(p.invuln>0) return; p.hp-=dmg; p.invuln=42; updateHP(); popText(p.x,p.y-10,"-"+dmg,'#ff6a4a'); if(p.hp<=0){ p.hp=0; updateHP(); respawn(); } }
 function respawn(){ const p=G.p; popText(p.x,p.y-20,"…caught you",'#ff9bb5'); p.x=SPAWN_TX*TS; p.y=(surf[SPAWN_TX]-3)*TS; p.vx=p.vy=0; p.hp=60; p.invuln=90; updateHP(); flash("down for a second — i've got you. back on your feet."); }
-function checkWin(){ if(QUEST.every(q=>G.collected[q.id])){ setTimeout(()=>openPaper('❤  for '+BDAY_NAME+'  ❤', LETTER_TEXT, true), 500); } }
+function checkWin(){ if(QUEST.every(q=>G.collected[q.id])){ setTimeout(()=>openPaper('❤  for Daddy  ❤', LETTER_TEXT, true), 500); } }
 
 /* ---------- HUD ---------- */
 function updateHP(){ const p=G.p; const pct=Math.max(0,p.hp/p.maxHp); hpFill.style.width=(pct*100)+'%'; hpFill.style.background= pct>0.5?'#5ef38c': pct>0.25?'#ffb454':'#ff6a4a'; }
@@ -569,7 +575,7 @@ function openPaper(title, body, isLetter){
   document.getElementById('paper-x').textContent= isLetter? 'close ↵' : 'fold it up ↵';
   paper.style.display='flex'; paper._isLetter=!!isLetter;
 }
-function closePaper(){ paper.style.display='none'; if(paper._isLetter){ endGame(true); } }
+function closePaper(){ paper.style.display='none'; try{ if(document.activeElement&&document.activeElement.blur) document.activeElement.blur(); }catch(e){} if(paper._isLetter){ endGame(true); } }
 
 /* ---------- loop ---------- */
 function loop(now){
@@ -578,8 +584,8 @@ function loop(now){
   const p=G.p; p.anim++;
   // spawn guardians when near chamber
   if(!G.guardsSpawned){ const near=G.items.find(it=>it.id==='puzzle'); if(near){ const d=Math.hypot(p.x-near.x,p.y-near.y); if(d<TS*14){ G.guards.forEach(gp=>spawnMob(Math.random()<0.5?'walker':'archer',gp[0],gp[1])); G.guardsSpawned=true; } } }
-  // ambient spawns
-  G.spawnT++; if(G.spawnT>150){ G.spawnT=0; spawnWave(); }
+  // ambient spawns (calmer)
+  G.spawnT++; if(G.spawnT>360){ G.spawnT=0; spawnWave(); }
 
   // input -> player
   const left=keys['a']||keys['arrowleft'], right=keys['d']||keys['arrowright'], jump=keys['w']||keys['arrowup']||keys[' '];
@@ -593,8 +599,9 @@ function loop(now){
   if(p.y>MAP_H*TS+200){ respawn(); }
 
   if(p.invuln>0) p.invuln--; if(p.swing>0) p.swing--; if(p.kcool>0) p.kcool--;
-  // hold-to-dig
+  // hold-to-dig (mouse targeted, or down-arrow straight down)
   if(mouse.down && G.hasPick && (p.anim%6===0)) tryDig();
+  if((keys['arrowdown']) && G.hasPick && (p.anim%6===0)) digDown();
 
   // health decay
   p.hp-=0.013; if(p.hp<=0){ p.hp=0; updateHP(); respawn(); } else if(p.anim%15===0) updateHP();
@@ -702,7 +709,7 @@ function drawPlayer(){
 function endGame(won){ if(G.over) return; G.over=true; state='g-over'; cancelAnimationFrame(G.raf);
   document.getElementById('end-h').textContent= won?'HAPPY BIRTHDAY':'…';
   document.getElementById('end-h').style.color= won?'#ff9bb5':'#ffd23f';
-  document.getElementById('end-p').innerHTML= won? '<span class="pk">you found every piece of me. that\'s the whole gift, '+BDAY_NAME+'. now come find me in real life for the rest of it.</span>' : 'come back anytime.';
+  document.getElementById('end-p').innerHTML= won? '<span class="pk">you found every piece of me. that\'s the whole gift, Daddy. now come find me in real life for the rest of it.</span>' : 'come back anytime.';
   ovEnd.style.display='flex';
 }
 
