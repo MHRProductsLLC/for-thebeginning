@@ -149,8 +149,8 @@ a{color:var(--pink)}
       <h2 id="start-h">THE GIFT</h2>
       <p id="start-p">a little world to wander. something's hidden in it for you.</p>
       <p class="small">
-        <span class="key">A</span><span class="key">D</span> move &nbsp; <span class="key">W</span>/<span class="key">space</span> jump &nbsp; <span class="key">↓</span> dig down &nbsp; <span class="key">↵</span> grab &nbsp; <span class="key">C</span> eat<br>
-        <span class="key">J</span> sword &nbsp; <span class="key">Q</span> throw knife (at cursor) &nbsp; <span class="key">click</span> dig (with pickaxe)
+        <span class="key">←</span><span class="key">→</span> move &nbsp; <span class="key">W</span>/<span class="key">space</span> jump &nbsp; <span class="key">↵</span> grab &nbsp; <span class="key">C</span> eat<br>
+        <span class="key">X</span> sword &nbsp; <span class="key">Q</span> throw knife (at cursor) &nbsp; <span class="key">↓</span> dig (with pickaxe)
       </p>
       <p class="small">your health slowly drains — eat what you find. <span class="key">esc</span> leaves anytime.</p>
       <button class="btn" id="start-go">STEP IN</button>
@@ -466,7 +466,7 @@ window.addEventListener('keydown',e=>{
   if(['a','d','w',' ','arrowleft','arrowright','arrowup','arrowdown','enter'].includes(k)) e.preventDefault();
   if(k==='enter') tryGrab();
   if(k==='c') tryEat();
-  if(k==='j') swordSwing();
+  if(k==='x') swordSwing();
   if(k==='q') throwKnife();
 });
 window.addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; });
@@ -501,7 +501,7 @@ function grab(it){
   it.got=true;
   if(it.kind==='note'){ openPaper('✦  a folded note  ✦', NOTE_TEXT, false); G.noteRead=true; questBox.style.display='flex'; return; }
   if(it.id==='pickaxe'){ G.hasPick=true; flash("pickaxe! press ↓ to dig down, or click nearby ground"); }
-  else if(it.id==='sword'){ G.hasSword=true; flash("a sword! press J to swing"); }
+  else if(it.id==='sword'){ G.hasSword=true; flash("a sword! press X to swing"); }
   else if(it.id==='knife'){ G.hasKnife=true; flash("throwing knives — infinite. press Q (aim with mouse)"); }
   else if(it.kind==='food'){ p_add_food(it); flash("picked up "+it.id.replace('oldfashioned','old fashioned')+" — press C to consume"); }
   else if(it.kind==='quest'){ G.collected[it.id]=true; updateSlots(); questFloat(it); checkWin(); }
