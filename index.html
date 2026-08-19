@@ -359,9 +359,7 @@ function placeHouse(tx,w,h){
 function buildWorld(){
   tiles=new Uint8Array(MAP_W*MAP_H);
   surf=[];
-  for(let x=0;x<MAP_W;x++) surf[x]=SURF_BASE+Math.round(3*Math.sin(x*0.15)+2*Math.sin(x*0.06+1));
-  const flat=(a,b,v)=>{ for(let x=a;x<=b;x++) surf[x]=v; };
-  flat(2,10,SURF_BASE); flat(34,44,20); flat(66,74,19); flat(96,102,20); flat(158,167,20);
+  for(let x=0;x<MAP_W;x++) surf[x]=SURF_BASE;        // completely flat
   for(let x=0;x<MAP_W;x++){
     for(let y=surf[x];y<MAP_H;y++){
       let v=STONE;
@@ -372,62 +370,24 @@ function buildWorld(){
   for(let y=0;y<MAP_H;y++){ setT(0,y,BEDROCK); setT(MAP_W-1,y,BEDROCK); }
   for(let x=0;x<MAP_W;x++) setT(x,MAP_H-1,BEDROCK);
 
-  // decorative trees
-  for(let x=20;x<MAP_W-8;x+=Math.random()<0.5?7:9){ if(Math.abs(x-38)<4||Math.abs(x-70)<4||Math.abs(x-100)<4||Math.abs(x-118)<3||x>154) continue; placeTree(x,4+Math.floor(Math.random()*4)); }
-
   const items=[];
   const addItem=(id,emoji,x,y,kind)=>items.push({id,emoji,kind,x,y,w:16,h:16,bob:Math.random()*6,got:false});
+  const gy=(tx)=>(surf[tx]-1)*TS;                    // rest on top of the flat grass
 
-  // tools + note near spawn
-  addItem('knife','🔪',(SPAWN_TX+3)*TS,(surf[SPAWN_TX+3]-1)*TS,'tool');
-  addItem('pickaxe','⛏️',(SPAWN_TX+7)*TS,(surf[SPAWN_TX+7]-1)*TS,'tool');
-  addItem('note','📜',(SPAWN_TX+11)*TS,(surf[SPAWN_TX+11]-1)*TS,'note');
-  addItem('sword','🗡️',20*TS,(surf[20]-1)*TS,'tool');
+  // note near spawn, then the pickaxe (optional — for the mine/build fun)
+  addItem('note','📜',9*TS, gy(9),'note');
+  addItem('pickaxe','⛏️',13*TS, gy(13),'tool');
 
-  // houses — bucket inside house #1
-  const bspot=placeHouse(38,5,4);
-  placeHouse(100,5,4);
-  addItem('bucket','🪣',bspot.x,bspot.y,'quest');
+  // the five items, out in the open on the flat ground, no searching
+  const qx=[19,25,31,37,43];
+  QUEST.forEach((q,i)=> addItem(q.id, q.emoji, qx[i]*TS, gy(qx[i]),'quest'));
 
-  // tall tree — key at top
-  const kspot=placeTallTree(70);
-  addItem('key','🔑',kspot.x,kspot.y,'quest');
+  // a couple of snacks along the walk (health tops-ups)
+  addItem('oldfashioned','🥃',22*TS, gy(22),'food');
+  addItem('pizza','🍕',34*TS, gy(34),'food');
+  addItem('oldfashioned','🥃',40*TS, gy(40),'food');
 
-  // snake — buried pocket under a stone cairn at x=95
-  const sx=95; const sy=surf[sx]+7;
-  carveRoom(sx,sy,1,1);
-  addItem('snake','🐍',sx*TS,(sy)*TS,'quest');
-  setT(sx,surf[sx]-1,STONE); setT(sx-1,surf[sx]-1,STONE); setT(sx+1,surf[sx]-1,STONE); setT(sx,surf[sx]-2,STONE); // cairn marker
-
-  // main cave -> puzzle chamber (guarded)
-  // shaft down from x=118, then meander to a deep room
-  for(let y=surf[118];y<surf[118]+8;y++){ setT(118,y,AIR); setT(119,y,AIR); }
-  const endp=rngWalkCave(118,surf[118]+8,90,1);
-  const chamber={x:endp.x,y:endp.y};
-  carveRoom(chamber.x,chamber.y,3,2);
-  addItem('puzzle','🧩',chamber.x*TS,chamber.y*TS,'quest');
-  const guards=[[chamber.x-2,chamber.y],[chamber.x+2,chamber.y],[chamber.x,chamber.y-1]];
-
-  // a couple extra small caves for exploring + food
-  rngWalkCave(60,surf[60]+9,50,1);
-  rngWalkCave(140,surf[140]+7,45,1);
-
-  // heart — far east on a pedestal
-  const hx=MAP_W-6; setT(hx,surf[hx]-1,PLANK); setT(hx-1,surf[hx]-1,PLANK); setT(hx+1,surf[hx]-1,PLANK);
-  addItem('heart','❤️',hx*TS,(surf[hx]-2)*TS,'quest');
-
-  // hard-jump platforms leading toward the heart (floating planks)
-  for(let i=0;i<5;i++){ const px=148+i*3, py=surf[px]-4-i%2*2; setT(px,py,PLANK); setT(px+1,py,PLANK); }
-
-  // food scattered on surface + in caves
-  const foods=[];
-  for(let x=15;x<MAP_W-8;x+=Math.random()<0.5?6:8){ if(Math.random()<0.55){ foods.push(['oldfashioned','🥃',x*TS,(surf[x]-1)*TS]); } if(Math.random()<0.5){ foods.push(['pizza','🍕',(x+2)*TS,(surf[x+2]-1)*TS]); } }
-  // some food underground (in carved caves): sprinkle where air below surface
-  let placedU=0;
-  for(let tries=0;tries<400 && placedU<10;tries++){ const x=8+Math.floor(Math.random()*(MAP_W-16)); const y=surf[x]+4+Math.floor(Math.random()*20); if(T(x,y)===AIR && solidAt(x,y+1)){ foods.push([Math.random()<0.5?'oldfashioned':'pizza', Math.random()<0.5?'🥃':'🍕', x*TS, y*TS]); placedU++; } }
-  foods.forEach(f=>addItem(f[0],f[1],f[2],f[3],'food'));
-
-  return { items, guards };
+  return { items, guards:[] };
 }
 
 /* ---------- game flow ---------- */
@@ -611,10 +571,7 @@ function loop(now){
   if(state!=='g'||!G||G.over) return; G.raf=requestAnimationFrame(loop);
   if(paper.style.display==='flex'){ render(); return; }   // pause world while reading
   const p=G.p; p.anim++;
-  // spawn guardians when near chamber
-  if(!G.guardsSpawned){ const near=G.items.find(it=>it.id==='puzzle'); if(near){ const d=Math.hypot(p.x-near.x,p.y-near.y); if(d<TS*14){ G.guards.forEach(gp=>spawnMob(Math.random()<0.5?'walker':'archer',gp[0],gp[1])); G.guardsSpawned=true; } } }
-  // ambient spawns (calmer)
-  G.spawnT++; if(G.spawnT>360){ G.spawnT=0; spawnWave(); }
+  // (mobs disabled for the easy version)
 
   // input -> player
   const left=keys['a']||keys['arrowleft'], right=keys['d']||keys['arrowright'], jump=keys['w']||keys['arrowup']||keys[' '];
@@ -633,7 +590,7 @@ function loop(now){
   if((keys['arrowdown']) && G.hasPick && (p.anim%6===0)) digDown();
 
   // health decay
-  p.hp-=0.013; if(p.hp<=0){ p.hp=0; updateHP(); respawn(); } else if(p.anim%15===0) updateHP();
+  p.hp-=0.005; if(p.hp<=0){ p.hp=0; updateHP(); respawn(); } else if(p.anim%15===0) updateHP();
 
   // sword hitbox
   if(p.swing>0){ const reach=30; const hb={x:p.facing>0?p.x+p.w:p.x-reach,y:p.y-4,w:reach,h:p.h+8};
